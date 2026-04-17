@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-func TestConfigureSwitch(t *testing.T) {
-	sw := NewSwitch("127.0.0.1", "password")
+func TestConfigureCiscoSwitch(t *testing.T) {
+	sw := NewCiscoSwitch("127.0.0.1", "password")
 	sw.port = 9050
 	var command string
 

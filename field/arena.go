@@ -48,7 +48,7 @@ type Arena struct {
 	EventSettings    *model.EventSettings
 	accessPoint      network.AccessPoint
 	accessPoint2     network.AccessPoint
-	networkSwitch    *network.Switch
+	networkSwitch    network.TeamSwitch
 	Plc              plc.Plc
 	TbaClient        *partner.TbaClient
 	AllianceStations map[string]*AllianceStation
@@ -142,7 +142,9 @@ func (arena *Arena) LoadSettings() error {
 		settings.ApTeamChannel, settings.ApAdminChannel, settings.ApAdminWpaKey, settings.NetworkSecurityEnabled)
 	arena.accessPoint2.SetSettings(settings.Ap2Address, settings.Ap2Username, settings.Ap2Password,
 		settings.Ap2TeamChannel, 0, "", settings.NetworkSecurityEnabled)
-	arena.networkSwitch = network.NewSwitch(settings.SwitchAddress, settings.SwitchPassword)
+	arena.networkSwitch = network.NewTeamSwitch(
+		settings.SwitchType, settings.SwitchAddress, settings.SwitchUsername, settings.SwitchPassword,
+	)
 	arena.Plc.SetAddress(settings.PlcAddress)
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
 

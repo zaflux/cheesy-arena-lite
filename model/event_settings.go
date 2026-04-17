@@ -30,8 +30,10 @@ type EventSettings struct {
 	Ap2Username                 string
 	Ap2Password                 string
 	Ap2TeamChannel              int
+	SwitchType                  string
 	SwitchAddress               string
 	SwitchPassword              string
+	SwitchUsername              string
 	PlcAddress                  string
 	AdminPassword               string
 	WarmupDurationSec           int

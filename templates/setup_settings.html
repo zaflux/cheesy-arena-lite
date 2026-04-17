@@ -204,9 +204,24 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="col-lg-5 control-label">Switch Type</label>
+            <div class="col-lg-7">
+              <select class="form-control" name="switchType">
+                <option value="cisco3500" {{if ne .SwitchType "aruba2920"}}selected{{end}}>Cisco Catalyst 3500</option>
+                <option value="aruba2920" {{if eq .SwitchType "aruba2920"}}selected{{end}}>HP/Aruba 2920</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="col-lg-5 control-label">Switch Address</label>
             <div class="col-lg-7">
               <input type="text" class="form-control" name="switchAddress" value="{{.SwitchAddress}}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-lg-5 control-label">Switch Username <small class="text-muted">(Aruba only)</small></label>
+            <div class="col-lg-7">
+              <input type="text" class="form-control" name="switchUsername" value="{{.SwitchUsername}}" placeholder="manager">
             </div>
           </div>
           <div class="form-group">
