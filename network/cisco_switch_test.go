@@ -6,11 +6,12 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"github.com/Team254/cheesy-arena-lite/model"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/Team254/cheesy-arena-lite/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigureCiscoSwitch(t *testing.T) {
