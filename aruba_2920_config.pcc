@@ -1,10 +1,8 @@
-; ==========================================================================
-; HP/Aruba 2920 Configuration
-; 
-; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Access%20Security%20Guide%20for%20AOS-S%20Switch%2016.10.pdf
-; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Management%20and%20Configuration%20Guide%20for%20ArubaOS-Switch%2016.10.pdf
 ; J9729A Configuration Editor; Created on release #WB.16.10.0025
 ; Ver #14:21.44.08.15.9b.3f.b3.b8.ee.34.79.3c.29.eb.9f.fc.f3.ff.37.ef:29
+; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Access%20Security%20Guide%20for%20AOS-S%20Switch%2016.10.pdf
+; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Management%20and%20Configuration%20Guide%20for%20ArubaOS-Switch%2016.10.pdf
+
 
 ; --- Base Host Configuration
 hostname "TD-SWITCH-1"
@@ -118,19 +116,28 @@ vlan 100
    untagged 1-8
    ip address 10.0.100.3 255.255.255.0
    ip access-group "DS-FMS" vlan-in
+   dhcp-server
    exit
 
 ; --- DHCP Configuration
-dhcp-server pool "dhcppool"
+dhcp-server pool "vlan100"
    authoritative
    network 10.0.100.0 255.255.255.0
-   range 10.0.100.126 10.0.100.199
-   range 10.0.100.226 10.0.100.254
+   range 10.0.100.100 10.0.100.230
    default-router 10.0.100.3
    dns-server 8.8.8.8
    dns-server 8.8.4.4
    domain-name "team1732.com"
-   lease 7
+   lease 00:07:00
+   exit
+
+; --- Static bindings
+dhcp-server pool "static-binding-FMS"
+   static-bind ip 10.0.100.5 255.255.255.0 mac 88:a2:9e:4a:8c:b5
+   exit
+
+dhcp-server pool "static-binding-Admin"
+   static-bind ip 10.0.100.99 255.255.255.0 mac 00:24:32:ae:5c:18
    exit
 
 dhcp-server enable
@@ -138,7 +145,7 @@ dhcp-server enable
 ; --- Spanning Tree
 spanning-tree
 spanning-tree mode rapid-pvst
-spanning-tree 9-48 admin-edge-port
+spanning-tree 2-48 admin-edge-port
 
 ; --- SSH Server
 ip ssh
@@ -146,6 +153,12 @@ ip ssh
 ; --- Allow Local Authentication
 aaa authentication ssh login local none
 aaa authentication ssh enable local none
+aaa authentication web login local
+aaa authentication rest enable login
+
+; --- Authorization
+; aaa authorization group REST_ADMIN 1 match-command ".*" permit
+
 
 ; --- Disable TFTP
 no tftp server
@@ -157,3 +170,4 @@ no dhcp config-file-update
 no dhcp image-file-update
 password manager plaintext "password"
 password operator plaintext "password"
+

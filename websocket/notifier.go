@@ -8,16 +8,20 @@ package websocket
 import (
 	"log"
 	"sync"
+	"time"
 )
 
 // Allow the listeners to buffer a small number of notifications to streamline delivery.
 const notifyBufferSize = 5
+const blockedListenerLogInterval = 5 * time.Second
 
 type Notifier struct {
 	messageType     string
 	messageProducer func() interface{}
 	listeners       map[chan messageEnvelope]struct{} // The map is essentially a set; the value is ignored.
 	mutex           sync.Mutex
+	lastBlockedLog  time.Time
+	droppedCount    int
 }
 
 type messageEnvelope struct {
@@ -63,7 +67,14 @@ func (notifier *Notifier) notifyListener(listener chan messageEnvelope, message 
 	case listener <- message:
 		// The notification was sent and received successfully.
 	default:
-		log.Printf("Failed to send a '%s' notification due to blocked listener.", notifier.messageType)
+		notifier.droppedCount++
+		now := time.Now()
+		if notifier.lastBlockedLog.IsZero() || now.Sub(notifier.lastBlockedLog) >= blockedListenerLogInterval {
+			log.Printf("Dropped %d '%s' notifications due to blocked listeners in the last %s.",
+				notifier.droppedCount, notifier.messageType, blockedListenerLogInterval)
+			notifier.lastBlockedLog = now
+			notifier.droppedCount = 0
+		}
 	}
 }
 

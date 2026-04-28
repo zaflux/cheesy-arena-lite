@@ -34,6 +34,7 @@ type EventSettings struct {
 	SwitchAddress               string
 	SwitchPassword              string
 	SwitchUsername              string
+	SwitchDiagnosticLogging     bool
 	PlcAddress                  string
 	AdminPassword               string
 	WarmupDurationSec           int

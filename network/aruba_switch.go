@@ -7,8 +7,10 @@ package network
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +25,8 @@ const (
 	arubaSwitchConfigBackoffSec  = 5
 	arubaSwitchConfigPauseSec    = 2
 	arubaSwitchTeamGateway       = 61
+	arubaSwitchShellStartPauseMs = 250
+	arubaSwitchCommandPaceMs     = 40
 )
 
 type ArubaSwitch struct {
@@ -54,24 +58,73 @@ func NewArubaSwitch(address, username, password string) *ArubaSwitch {
 func (sw *ArubaSwitch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 	sw.mutex.Lock()
 	defer sw.mutex.Unlock()
+	log.Printf("ArubaSwitch(%s): requested Ethernet reconfiguration for teams [%s]", sw.address,
+		arubaTeamSummary(teams))
 
+	removeCommands, addCommands, hasTeams := sw.buildConfigureCommands(teams)
+	log.Printf("ArubaSwitch(%s): reset command block:\n%s", sw.address, formatArubaCommandBlock(removeCommands))
+	if hasTeams {
+		log.Printf("ArubaSwitch(%s): apply command block:\n%s", sw.address, formatArubaCommandBlock(addCommands))
+	} else {
+		log.Printf("ArubaSwitch(%s): no teams assigned; only reset/remove commands will be sent.", sw.address)
+	}
+
+	log.Printf("ArubaSwitch(%s): sending reset command block.", sw.address)
+	output, err := sw.runCommandSequence(removeCommands)
+	if err != nil {
+		log.Printf("ArubaSwitch(%s): failed sending reset command block: %s", sw.address, err.Error())
+		return err
+	}
+	if strings.TrimSpace(output) != "" {
+		log.Printf("ArubaSwitch(%s): reset command output:\n%s", sw.address, output)
+	}
+	time.Sleep(sw.configPauseDuration)
+
+	if hasTeams {
+		log.Printf("ArubaSwitch(%s): sending apply command block.", sw.address)
+		output, err = sw.runCommandSequence(addCommands)
+		if err != nil {
+			log.Printf("ArubaSwitch(%s): failed sending apply command block: %s", sw.address, err.Error())
+			return err
+		}
+		if strings.TrimSpace(output) != "" {
+			log.Printf("ArubaSwitch(%s): apply command output:\n%s", sw.address, output)
+		}
+	} else {
+		// Persist removal-only changes as well.
+		log.Printf("ArubaSwitch(%s): writing memory for removal-only update.", sw.address)
+		_, err = sw.runCommandSequence([]string{"write memory"})
+		if err != nil {
+			log.Printf("ArubaSwitch(%s): failed writing memory: %s", sw.address, err.Error())
+			return err
+		}
+	}
+	log.Printf("ArubaSwitch(%s): completed Ethernet reconfiguration for teams [%s]", sw.address,
+		arubaTeamSummary(teams))
+
+	// Give some time for the configuration to take before another one can be attempted.
+	time.Sleep(sw.configBackoffDuration)
+
+	return nil
+}
+
+func (sw *ArubaSwitch) buildConfigureCommands(teams [6]*model.Team) ([]string, []string, bool) {
 	// Remove old team VLANs and DHCP pools to reset the switch state.
 	removeCommands := []string{"configure terminal"}
-	for vlan := 10; vlan <= 60; vlan += 10 {
+	for vlan := red1Vlan; vlan <= blue3Vlan; vlan += 10 {
+		aclName := 100 + vlan
 		removeCommands = append(removeCommands,
 			fmt.Sprintf("no dhcp-server pool \"dhcp%d\"", vlan),
 			fmt.Sprintf("vlan %d", vlan),
+			"no dhcp-server",
+			fmt.Sprintf("no ip access-group \"%d\" vlan-in", aclName),
 			"no ip address",
 			"exit",
+			fmt.Sprintf("no ip access-list extended \"%d\"", aclName),
 		)
 	}
+	removeCommands = append(removeCommands, "vlan 100", "dhcp-server", "exit")
 	removeCommands = append(removeCommands, "exit")
-
-	_, err := sw.runCommandSequence(removeCommands)
-	if err != nil {
-		return err
-	}
-	time.Sleep(sw.configPauseDuration)
 
 	// Create the new team VLANs and DHCP pools.
 	addCommands := []string{"configure terminal"}
@@ -82,22 +135,24 @@ func (sw *ArubaSwitch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 			return
 		}
 		hasTeams = true
-		teamPartialIp := fmt.Sprintf("%d.%d", team.Id/100, team.Id%100)
-		gatewayIp := fmt.Sprintf("10.%s.%d", teamPartialIp, arubaSwitchTeamGateway)
-		network := fmt.Sprintf("10.%s.0", teamPartialIp)
+		teamSubnet := teamSubnetPrefix(team.Id)
+		gatewayIp := fmt.Sprintf("%s.%d", teamSubnet, arubaSwitchTeamGateway)
+		network := fmt.Sprintf("%s.0", teamSubnet)
+		aclName := 100 + vlan
 
-		// Configure the VLAN interface IP.
+		// Configure the VLAN interface IP and tie DHCP service to this VLAN.
 		addCommands = append(addCommands,
 			fmt.Sprintf("vlan %d", vlan),
 			fmt.Sprintf("ip address %s 255.255.255.0", gatewayIp),
-			fmt.Sprintf("ip access-group \"%d\" in", 100+vlan),
+			"dhcp-server",
+			fmt.Sprintf("ip access-group \"%d\" vlan-in", aclName),
 			"exit",
 		)
 
 		// Configure the access list for this team.
 		addCommands = append(addCommands,
-			fmt.Sprintf("ip access-list extended \"%d\"", 100+vlan),
-			fmt.Sprintf("10 permit ip 10.%s.0 0.0.0.255 host %s", teamPartialIp, ServerIpAddress),
+			fmt.Sprintf("ip access-list extended \"%d\"", aclName),
+			fmt.Sprintf("10 permit ip %s.0 0.0.0.255 host %s", teamSubnet, ServerIpAddress),
 			"20 permit udp any eq 68 any eq 67",
 			"30 deny ip any any",
 			"exit",
@@ -108,8 +163,9 @@ func (sw *ArubaSwitch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 		// Usable range: 10.x.y.101 through 10.x.y.199
 		addCommands = append(addCommands,
 			fmt.Sprintf("dhcp-server pool \"dhcp%d\"", vlan),
+			"authoritative",
 			fmt.Sprintf("network %s 255.255.255.0", network),
-			fmt.Sprintf("range 10.%s.101 10.%s.199", teamPartialIp, teamPartialIp),
+			fmt.Sprintf("range %s.101 %s.199", teamSubnet, teamSubnet),
 			fmt.Sprintf("default-router %s", gatewayIp),
 			"lease 7",
 			"exit",
@@ -122,19 +178,13 @@ func (sw *ArubaSwitch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 	addTeamVlan(teams[3], blue1Vlan)
 	addTeamVlan(teams[4], blue2Vlan)
 	addTeamVlan(teams[5], blue3Vlan)
+	addCommands = append(addCommands, "vlan 100", "dhcp-server", "exit")
 
 	if hasTeams {
 		addCommands = append(addCommands, "write memory", "exit")
-		_, err = sw.runCommandSequence(addCommands)
-		if err != nil {
-			return err
-		}
 	}
 
-	// Give some time for the configuration to take before another one can be attempted.
-	time.Sleep(sw.configBackoffDuration)
-
-	return nil
+	return removeCommands, addCommands, hasTeams
 }
 
 // Logs into the switch via SSH and runs the given commands in sequence.
@@ -170,7 +220,7 @@ func (sw *ArubaSwitch) runCommandSequence(commands []string) (string, error) {
 	}
 
 	modes := ssh.TerminalModes{ssh.ECHO: 0}
-	if err := session.RequestPty("vt100", 80, 40, modes); err != nil {
+	if err := session.RequestPty("dumb", 200, 60, modes); err != nil {
 		return "", fmt.Errorf("failed to configure shell: %w", err)
 	}
 
@@ -179,10 +229,24 @@ func (sw *ArubaSwitch) runCommandSequence(commands []string) (string, error) {
 		return "", fmt.Errorf("failed to start shell: %w", err)
 	}
 
+	// Allow the remote shell to fully initialize before sending commands.
+	time.Sleep(arubaSwitchShellStartPauseMs * time.Millisecond)
+
+	// Sync to a clean prompt and disable paging to avoid interactive pauses.
+	if _, err := fmt.Fprint(inputPipe, "\r\n"); err != nil {
+		return "", fmt.Errorf("failed to prime switch shell: %w", err)
+	}
+	time.Sleep(arubaSwitchCommandPaceMs * time.Millisecond)
+	if _, err := fmt.Fprint(inputPipe, "no page\r\n"); err != nil {
+		return "", fmt.Errorf("failed to disable paging on switch shell: %w", err)
+	}
+	time.Sleep(arubaSwitchCommandPaceMs * time.Millisecond)
+
 	for _, command := range commands {
-		if _, err := fmt.Fprintln(inputPipe, command); err != nil {
+		if _, err := fmt.Fprintf(inputPipe, "%s\r\n", command); err != nil {
 			return "", fmt.Errorf("failed to write command to switch: %w", err)
 		}
+		time.Sleep(arubaSwitchCommandPaceMs * time.Millisecond)
 	}
 
 	// Close the input to signal we're done sending commands.
@@ -195,11 +259,33 @@ func (sw *ArubaSwitch) runCommandSequence(commands []string) (string, error) {
 	select {
 	case err := <-done:
 		if err != nil {
-			return "", fmt.Errorf("failed to run command sequence: %w", err)
+			return "", fmt.Errorf("failed to run command sequence: %w\noutput:\n%s", err, outputBuffer.String())
 		}
 	case <-time.After(sw.configTimeoutDuration):
-		return "", fmt.Errorf("timed out waiting for command sequence to complete")
+		return "", fmt.Errorf("timed out waiting for command sequence to complete\ncommands:\n%s\npartial output:\n%s",
+			formatArubaCommandBlock(commands), outputBuffer.String())
 	}
 
 	return outputBuffer.String(), nil
+}
+
+func arubaTeamSummary(teams [6]*model.Team) string {
+	stations := []string{"R1", "R2", "R3", "B1", "B2", "B3"}
+	entries := make([]string, len(stations))
+	for i, station := range stations {
+		if teams[i] == nil {
+			entries[i] = fmt.Sprintf("%s=none", station)
+			continue
+		}
+		entries[i] = fmt.Sprintf("%s=%d", station, teams[i].Id)
+	}
+	return strings.Join(entries, ", ")
+}
+
+func formatArubaCommandBlock(commands []string) string {
+	lines := make([]string, len(commands))
+	for i, command := range commands {
+		lines[i] = fmt.Sprintf("%02d: %s", i+1, command)
+	}
+	return strings.Join(lines, "\n")
 }

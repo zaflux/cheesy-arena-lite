@@ -8,6 +8,7 @@ package field
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/Team254/cheesy-arena-lite/bracket"
@@ -143,6 +144,7 @@ func (arena *Arena) LoadSettings() error {
 		settings.ApTeamChannel, settings.ApAdminChannel, settings.ApAdminWpaKey, settings.NetworkSecurityEnabled)
 	arena.accessPoint2.SetSettings(settings.Ap2Address, settings.Ap2Username, settings.Ap2Password,
 		settings.Ap2TeamChannel, 0, "", settings.NetworkSecurityEnabled)
+	network.SetSwitchDiagnosticLoggingEnabled(settings.SwitchDiagnosticLogging)
 	arena.networkSwitch = network.NewTeamSwitch(
 		settings.SwitchType, settings.SwitchAddress, settings.SwitchUsername, settings.SwitchPassword,
 	)
@@ -671,29 +673,51 @@ func (arena *Arena) preLoadNextMatch() {
 
 // Asynchronously reconfigures the networking hardware for the new set of teams.
 func (arena *Arena) setupNetwork(teams [6]*model.Team) {
-	if arena.EventSettings.NetworkSecurityEnabled {
-		if arena.EventSettings.Ap2TeamChannel == 0 {
-			// Only one AP is being used.
-			if err := arena.accessPoint.ConfigureTeamWifi(teams); err != nil {
-				log.Printf("Failed to configure team WiFi: %s", err.Error())
-			}
-		} else {
-			// Two APs are being used. Configure the first for the red teams and the second for the blue teams.
-			if err := arena.accessPoint.ConfigureTeamWifi([6]*model.Team{teams[0], teams[1], teams[2], nil, nil,
-				nil}); err != nil {
-				log.Printf("Failed to configure red alliance WiFi: %s", err.Error())
-			}
-			if err := arena.accessPoint2.ConfigureTeamWifi([6]*model.Team{nil, nil, nil, teams[3], teams[4],
-				teams[5]}); err != nil {
-				log.Printf("Failed to configure blue alliance WiFi: %s", err.Error())
-			}
-		}
-		go func() {
-			if err := arena.networkSwitch.ConfigureTeamEthernet(teams); err != nil {
-				log.Printf("Failed to configure team Ethernet: %s", err.Error())
-			}
-		}()
+	log.Printf("Network setup requested for teams [%s] (networkSecurityEnabled=%t, switchType=%s, switchAddress=%s)",
+		arenaTeamSummary(teams), arena.EventSettings.NetworkSecurityEnabled, arena.EventSettings.SwitchType,
+		arena.EventSettings.SwitchAddress)
+	if !arena.EventSettings.NetworkSecurityEnabled {
+		log.Printf("Skipping network hardware configuration because network security is disabled.")
+		return
 	}
+
+	if arena.EventSettings.Ap2TeamChannel == 0 {
+		// Only one AP is being used.
+		if err := arena.accessPoint.ConfigureTeamWifi(teams); err != nil {
+			log.Printf("Failed to configure team WiFi: %s", err.Error())
+		}
+	} else {
+		// Two APs are being used. Configure the first for the red teams and the second for the blue teams.
+		if err := arena.accessPoint.ConfigureTeamWifi([6]*model.Team{teams[0], teams[1], teams[2], nil, nil,
+			nil}); err != nil {
+			log.Printf("Failed to configure red alliance WiFi: %s", err.Error())
+		}
+		if err := arena.accessPoint2.ConfigureTeamWifi([6]*model.Team{nil, nil, nil, teams[3], teams[4],
+			teams[5]}); err != nil {
+			log.Printf("Failed to configure blue alliance WiFi: %s", err.Error())
+		}
+	}
+	go func() {
+		log.Printf("Starting async switch Ethernet configuration for teams [%s]", arenaTeamSummary(teams))
+		if err := arena.networkSwitch.ConfigureTeamEthernet(teams); err != nil {
+			log.Printf("Failed to configure team Ethernet: %s", err.Error())
+			return
+		}
+		log.Printf("Completed switch Ethernet configuration for teams [%s]", arenaTeamSummary(teams))
+	}()
+}
+
+func arenaTeamSummary(teams [6]*model.Team) string {
+	stations := []string{"R1", "R2", "R3", "B1", "B2", "B3"}
+	entries := make([]string, len(stations))
+	for i, station := range stations {
+		if teams[i] == nil {
+			entries[i] = fmt.Sprintf("%s=none", station)
+			continue
+		}
+		entries[i] = fmt.Sprintf("%s=%d", station, teams[i].Id)
+	}
+	return strings.Join(entries, ", ")
 }
 
 // Returns nil if the match can be started, and an error otherwise.

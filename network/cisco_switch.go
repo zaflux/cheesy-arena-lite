@@ -49,20 +49,20 @@ func (sw *CiscoSwitch) ConfigureTeamEthernet(teams [6]*model.Team) error {
 		if oldTeamVlans[team.Id] == vlan {
 			delete(oldTeamVlans, team.Id)
 		} else {
+			teamSubnet := teamSubnetPrefix(team.Id)
 			addTeamVlansCommand += fmt.Sprintf(
-				"ip dhcp excluded-address 10.%d.%d.1 10.%d.%d.100\n"+
+				"ip dhcp excluded-address %s.1 %s.100\n"+
 					"no ip dhcp pool dhcp%d\n"+
 					"ip dhcp pool dhcp%d\n"+
-					"network 10.%d.%d.0 255.255.255.0\n"+
-					"default-router 10.%d.%d.61\n"+
+					"network %s.0 255.255.255.0\n"+
+					"default-router %s.61\n"+
 					"lease 7\n"+
 					"no access-list 1%d\n"+
-					"access-list 1%d permit ip 10.%d.%d.0 0.0.0.255 host %s\n"+
+					"access-list 1%d permit ip %s.0 0.0.0.255 host %s\n"+
 					"access-list 1%d permit udp any eq bootpc any eq bootps\n"+
-					"interface Vlan%d\nip address 10.%d.%d.61 255.255.255.0\n",
-				team.Id/100, team.Id%100, team.Id/100, team.Id%100, vlan, vlan, team.Id/100, team.Id%100, team.Id/100,
-				team.Id%100, vlan, vlan, team.Id/100, team.Id%100, ServerIpAddress, vlan, vlan, team.Id/100,
-				team.Id%100)
+					"interface Vlan%d\nip address %s.61 255.255.255.0\n",
+				teamSubnet, teamSubnet, vlan, vlan, teamSubnet, teamSubnet, vlan, vlan, teamSubnet,
+				ServerIpAddress, vlan, vlan, teamSubnet)
 		}
 	}
 	replaceTeamVlan(teams[0], red1Vlan)
@@ -111,7 +111,7 @@ func (sw *CiscoSwitch) getTeamVlans() (map[int]int, error) {
 	for _, match := range teamVlanMatches {
 		team100s, _ := strconv.Atoi(match[2])
 		team1s, _ := strconv.Atoi(match[3])
-		team := int(team100s)*100 + team1s
+		team := teamIDFromSubnetOctets(team100s, team1s)
 		vlan, _ := strconv.Atoi(match[1])
 		teamVlans[team] = vlan
 	}
