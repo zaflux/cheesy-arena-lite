@@ -30,8 +30,8 @@ const (
 	arubaRestAclType        = "AT_EXTENDED_IPV4"
 	arubaRestAclDirection   = "AD_VLAN_INBOUND"
 	arubaRestDhcpLeaseDays  = 7
-	arubaRestDhcpRangeStart = 101
-	arubaRestDhcpRangeEnd   = 199
+	arubaRestDhcpRangeStart = 5
+	arubaRestDhcpRangeEnd   = 20
 )
 
 var arubaSwitchRestApiVersions = []string{
@@ -214,7 +214,7 @@ func (sw *ArubaSwitchRest) buildCliConfigureCommands(teams [6]*model.Team) ([]st
 			fmt.Sprintf("dhcp-server pool \"dhcp%d\"", vlan),
 			"authoritative",
 			fmt.Sprintf("network %s 255.255.255.0", networkIP),
-			fmt.Sprintf("range %s.101 %s.199", teamSubnet, teamSubnet),
+			fmt.Sprintf("range %s.5 %s.20", teamSubnet, teamSubnet),
 			fmt.Sprintf("default-router %s", gatewayIP),
 			"dns-server 8.8.8.8",
 			"dns-server 8.8.4.4",

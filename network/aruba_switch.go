@@ -24,7 +24,7 @@ const (
 	arubaSwitchConfigTimeoutSec  = 10
 	arubaSwitchConfigBackoffSec  = 5
 	arubaSwitchConfigPauseSec    = 2
-	arubaSwitchTeamGateway       = 61
+	arubaSwitchTeamGateway       = 4
 	arubaSwitchShellStartPauseMs = 250
 	arubaSwitchCommandPaceMs     = 40
 )

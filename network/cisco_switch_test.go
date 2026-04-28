@@ -34,7 +34,7 @@ func TestConfigureCiscoSwitch(t *testing.T) {
 
 	// Should configure new teams and leave existing ones alone if still needed.
 	sw.port += 1
-	mockTelnet(t, sw.port, "interface Vlan50\nip address 10.2.54.61\n", &command)
+	mockTelnet(t, sw.port, "interface Vlan50\nip address 10.2.54.4\n", &command)
 	assert.Nil(t, sw.ConfigureTeamEthernet([6]*model.Team{nil, &model.Team{Id: 1114}, nil, nil, &model.Team{Id: 254},
 		nil}))
 	assert.Equal(t, "password\nenable\npassword\nterminal length 0\nconfig terminal\n"+

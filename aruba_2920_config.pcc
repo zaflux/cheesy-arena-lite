@@ -19,6 +19,10 @@ ntp enable
 ; --- Base IP Configuration
 ip routing
 
+ip access-list extended "vlan100"
+   10 permit ip any any
+   exit
+
 ip access-list extended "DS-FMS"
    10 permit udp any eq 1145 10.0.100.0 0.0.0.255 eq 1160
    20 permit tcp any 10.0.100.0 0.0.0.255 eq 1750
@@ -68,6 +72,7 @@ vlan 1
    name "DEFAULT_VLAN"
    untagged 9-24
    ip address 10.0.0.1 255.255.255.0
+   dhcp-server
    exit
 vlan 10
    name "Red1"
@@ -94,7 +99,7 @@ vlan 40
    name "Blue1"
    tagged 1-8
    untagged 37-40
-   ip address 10.17.32.4 255.255.255.0
+   ip address 10.4.4 255.255.255.0
    ip access-group "DS-FMS" vlan-in
    exit
 vlan 50
@@ -115,7 +120,7 @@ vlan 100
    name "Admin"
    untagged 1-8
    ip address 10.0.100.3 255.255.255.0
-   ip access-group "DS-FMS" vlan-in
+   ip access-group "vlan100" vlan-in
    dhcp-server
    exit
 
@@ -131,13 +136,20 @@ dhcp-server pool "vlan100"
    lease 00:07:00
    exit
 
+dhcp-server pool "vlan1"
+   authoritative
+   network 10.0.0.0 255.255.255.0
+   range 10.0.0.100 10.0.0.105
+   default-router 10.0.0.3
+   dns-server 8.8.8.8
+   dns-server 8.8.4.4
+   domain-name "team1732.com"
+   lease 00:07:00
+   exit
+
 ; --- Static bindings
 dhcp-server pool "static-binding-FMS"
    static-bind ip 10.0.100.5 255.255.255.0 mac 88:a2:9e:4a:8c:b5
-   exit
-
-dhcp-server pool "static-binding-Admin"
-   static-bind ip 10.0.100.99 255.255.255.0 mac 00:24:32:ae:5c:18
    exit
 
 dhcp-server enable
@@ -154,7 +166,7 @@ ip ssh
 aaa authentication ssh login local none
 aaa authentication ssh enable local none
 aaa authentication web login local
-aaa authentication rest enable login
+aaa authentication web enable local
 
 ; --- Authorization
 ; aaa authorization group REST_ADMIN 1 match-command ".*" permit

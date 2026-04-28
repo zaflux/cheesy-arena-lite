@@ -69,7 +69,7 @@ func TestArubaSwitchBuildConfigureCommands_TeamVlanDhcpAndAcl(t *testing.T) {
 	commandText := strings.Join(addCommands, "\n")
 
 	assert.Contains(t, commandText, "vlan 20")
-	assert.Contains(t, commandText, "ip address 10.2.54.61 255.255.255.0")
+	assert.Contains(t, commandText, "ip address 10.2.54.4 255.255.255.0")
 	assert.Contains(t, commandText, "dhcp-server")
 	assert.Contains(t, commandText, "ip access-group \"120\" vlan-in")
 	assert.Contains(t, commandText, "ip access-list extended \"120\"")
@@ -77,8 +77,8 @@ func TestArubaSwitchBuildConfigureCommands_TeamVlanDhcpAndAcl(t *testing.T) {
 	assert.Contains(t, commandText, "dhcp-server pool \"dhcp20\"")
 	assert.Contains(t, commandText, "authoritative")
 	assert.Contains(t, commandText, "network 10.2.54.0 255.255.255.0")
-	assert.Contains(t, commandText, "range 10.2.54.101 10.2.54.199")
-	assert.Contains(t, commandText, "default-router 10.2.54.61")
+	assert.Contains(t, commandText, "range 10.2.54.5 10.2.54.20")
+	assert.Contains(t, commandText, "default-router 10.2.54.4")
 	assert.Contains(t, commandText, "vlan 100")
 }
 
@@ -90,8 +90,8 @@ func TestArubaSwitchBuildConfigureCommands_10000SeriesTeamAddressing(t *testing.
 
 	assert.True(t, hasTeams)
 	commandText := strings.Join(addCommands, "\n")
-	assert.Contains(t, commandText, "ip address 10.101.73.61 255.255.255.0")
+	assert.Contains(t, commandText, "ip address 10.101.73.4 255.255.255.0")
 	assert.Contains(t, commandText, "network 10.101.73.0 255.255.255.0")
-	assert.Contains(t, commandText, "range 10.101.73.101 10.101.73.199")
-	assert.Contains(t, commandText, "default-router 10.101.73.61")
+	assert.Contains(t, commandText, "range 10.101.73.5 10.101.73.20")
+	assert.Contains(t, commandText, "default-router 10.101.73.4")
 }
