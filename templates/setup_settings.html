@@ -145,12 +145,21 @@
         </fieldset>
         <fieldset>
           <legend>Networking</legend>
-          <p>Enable this setting if you have a Linksys WRT1900ACS access point and Catalyst 3500-series
+          <p>Enable this setting if you have a supported access point and Catalyst 3500-series
               switch available, for isolating each team to its own SSID and VLAN.</p>
           <div class="form-group">
             <label class="col-lg-7 control-label">Enable advanced network security</label>
             <div class="col-lg-1 checkbox">
               <input type="checkbox" name="networkSecurityEnabled"{{if .NetworkSecurityEnabled}} checked{{end}}>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-lg-5 control-label">AP Type</label>
+            <div class="col-lg-7">
+              <select class="form-control" name="apType">
+                <option value="linksys"{{if eq .ApType "linksys"}} selected{{end}}>Linksys WRT1900ACS (OpenWRT/SSH)</option>
+                <option value="vh113"{{if eq .ApType "vh113"}} selected{{end}}>Vivid-Hosting VH-113 (REST API)</option>
+              </select>
             </div>
           </div>
           <div class="form-group">
@@ -217,6 +226,15 @@
           </div>
           <p>If you have a second access point available and want to use one for each alliance to increase available
             bandwidth, configure the second one below.</p>
+          <div class="form-group">
+            <label class="col-lg-5 control-label">Second AP Type</label>
+            <div class="col-lg-7">
+              <select class="form-control" name="ap2Type">
+                <option value="linksys"{{if eq .Ap2Type "linksys"}} selected{{end}}>Linksys WRT1900ACS (OpenWRT/SSH)</option>
+                <option value="vh113"{{if eq .Ap2Type "vh113"}} selected{{end}}>Vivid-Hosting VH-113 (REST API)</option>
+              </select>
+            </div>
+          </div>
           <div class="form-group">
             <label class="col-lg-5 control-label">Second AP Address</label>
             <div class="col-lg-7">

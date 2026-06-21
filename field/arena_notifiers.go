@@ -75,9 +75,9 @@ func (arena *Arena) generateArenaStatusMessage() interface{} {
 	teamWifiStatuses := make(map[string]network.TeamWifiStatus)
 	for i, station := range []string{"R1", "R2", "R3", "B1", "B2", "B3"} {
 		if arena.EventSettings.Ap2TeamChannel == 0 || i < 3 {
-			teamWifiStatuses[station] = arena.accessPoint.TeamWifiStatuses[i]
+			teamWifiStatuses[station] = arena.accessPoint.GetTeamWifiStatuses()[i]
 		} else {
-			teamWifiStatuses[station] = arena.accessPoint2.TeamWifiStatuses[i]
+			teamWifiStatuses[station] = arena.accessPoint2.GetTeamWifiStatuses()[i]
 		}
 	}
 

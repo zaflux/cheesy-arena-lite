@@ -46,8 +46,8 @@ const (
 type Arena struct {
 	Database         *model.Database
 	EventSettings    *model.EventSettings
-	accessPoint      network.AccessPoint
-	accessPoint2     network.AccessPoint
+	accessPoint      network.AccessPointer
+	accessPoint2     network.AccessPointer
 	networkSwitch    *network.Switch
 	Plc              plc.Plc
 	TbaClient        *partner.TbaClient
@@ -138,6 +138,13 @@ func (arena *Arena) LoadSettings() error {
 	arena.EventSettings = settings
 
 	// Initialize the components that depend on settings.
+	// Create access point instances if they haven't been created yet, or if the type has changed.
+	if arena.accessPoint == nil || network.AccessPointType(arena.accessPoint) != settings.ApType {
+		arena.accessPoint = network.NewAccessPoint(settings.ApType)
+	}
+	if arena.accessPoint2 == nil || network.AccessPointType(arena.accessPoint2) != settings.Ap2Type {
+		arena.accessPoint2 = network.NewAccessPoint(settings.Ap2Type)
+	}
 	arena.accessPoint.SetSettings(settings.ApAddress, settings.ApUsername, settings.ApPassword,
 		settings.ApTeamChannel, settings.ApAdminChannel, settings.ApAdminWpaKey, settings.NetworkSecurityEnabled)
 	arena.accessPoint2.SetSettings(settings.Ap2Address, settings.Ap2Username, settings.Ap2Password,
