@@ -8,6 +8,7 @@ package web
 import (
 	"fmt"
 	"github.com/Team254/cheesy-arena-lite/model"
+	"github.com/Team254/cheesy-arena-lite/network"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -62,16 +63,9 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.TbaSecretId = r.PostFormValue("tbaSecretId")
 	eventSettings.TbaSecret = r.PostFormValue("tbaSecret")
 	eventSettings.NetworkSecurityEnabled = r.PostFormValue("networkSecurityEnabled") == "on"
+	eventSettings.ApType = model.NormalizeAccessPointType(r.PostFormValue("apType"))
 	eventSettings.ApAddress = r.PostFormValue("apAddress")
-	eventSettings.ApUsername = r.PostFormValue("apUsername")
-	eventSettings.ApPassword = r.PostFormValue("apPassword")
 	eventSettings.ApTeamChannel, _ = strconv.Atoi(r.PostFormValue("apTeamChannel"))
-	eventSettings.ApAdminChannel, _ = strconv.Atoi(r.PostFormValue("apAdminChannel"))
-	eventSettings.ApAdminWpaKey = r.PostFormValue("apAdminWpaKey")
-	eventSettings.Ap2Address = r.PostFormValue("ap2Address")
-	eventSettings.Ap2Username = r.PostFormValue("ap2Username")
-	eventSettings.Ap2Password = r.PostFormValue("ap2Password")
-	eventSettings.Ap2TeamChannel, _ = strconv.Atoi(r.PostFormValue("ap2TeamChannel"))
 	eventSettings.SwitchAddress = r.PostFormValue("switchAddress")
 	eventSettings.SwitchPassword = r.PostFormValue("switchPassword")
 	eventSettings.PlcAddress = r.PostFormValue("plcAddress")
@@ -82,7 +76,31 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.TeleopDurationSec, _ = strconv.Atoi(r.PostFormValue("teleopDurationSec"))
 	eventSettings.WarningRemainingDurationSec, _ = strconv.Atoi(r.PostFormValue("warningRemainingDurationSec"))
 
-	if eventSettings.Ap2TeamChannel != 0 && eventSettings.Ap2TeamChannel == eventSettings.ApTeamChannel {
+	if eventSettings.ApType == model.AccessPointTypeVh113 {
+		eventSettings.ApUsername = ""
+		eventSettings.ApPassword = ""
+		eventSettings.ApAdminChannel = 0
+		eventSettings.ApAdminWpaKey = ""
+		eventSettings.Ap2Address = ""
+		eventSettings.Ap2Username = ""
+		eventSettings.Ap2Password = ""
+		eventSettings.Ap2TeamChannel = 0
+		if !network.IsValidVh113Channel(eventSettings.ApTeamChannel) {
+			eventSettings.ApTeamChannel = network.DefaultVh113Channel
+		}
+	} else {
+		eventSettings.ApUsername = r.PostFormValue("apUsername")
+		eventSettings.ApPassword = r.PostFormValue("apPassword")
+		eventSettings.ApAdminChannel, _ = strconv.Atoi(r.PostFormValue("apAdminChannel"))
+		eventSettings.ApAdminWpaKey = r.PostFormValue("apAdminWpaKey")
+		eventSettings.Ap2Address = r.PostFormValue("ap2Address")
+		eventSettings.Ap2Username = r.PostFormValue("ap2Username")
+		eventSettings.Ap2Password = r.PostFormValue("ap2Password")
+		eventSettings.Ap2TeamChannel, _ = strconv.Atoi(r.PostFormValue("ap2TeamChannel"))
+	}
+
+	if eventSettings.ApType == model.AccessPointTypeLinksys &&
+		eventSettings.Ap2TeamChannel != 0 && eventSettings.Ap2TeamChannel == eventSettings.ApTeamChannel {
 		web.renderSettings(w, r, "Cannot use same channel for both access points.")
 		return
 	}

@@ -136,12 +136,31 @@ func (arena *Arena) LoadSettings() error {
 		return err
 	}
 	arena.EventSettings = settings
+	arena.EventSettings.ApType = model.NormalizeAccessPointType(arena.EventSettings.ApType)
+	if arena.EventSettings.ApType == model.AccessPointTypeVh113 {
+		arena.EventSettings.Ap2TeamChannel = 0
+	}
 
 	// Initialize the components that depend on settings.
-	arena.accessPoint.SetSettings(settings.ApAddress, settings.ApUsername, settings.ApPassword,
-		settings.ApTeamChannel, settings.ApAdminChannel, settings.ApAdminWpaKey, settings.NetworkSecurityEnabled)
-	arena.accessPoint2.SetSettings(settings.Ap2Address, settings.Ap2Username, settings.Ap2Password,
-		settings.Ap2TeamChannel, 0, "", settings.NetworkSecurityEnabled)
+	arena.accessPoint.SetSettings(network.AccessPointSettings{
+		Type:                   settings.ApType,
+		Address:                settings.ApAddress,
+		Username:               settings.ApUsername,
+		Password:               settings.ApPassword,
+		TeamChannel:            settings.ApTeamChannel,
+		AdminChannel:           settings.ApAdminChannel,
+		AdminWpaKey:            settings.ApAdminWpaKey,
+		NetworkSecurityEnabled: settings.NetworkSecurityEnabled,
+	})
+	arena.accessPoint2.SetSettings(network.AccessPointSettings{
+		Type:                   settings.ApType,
+		Disabled:               settings.ApType == model.AccessPointTypeVh113,
+		Address:                settings.Ap2Address,
+		Username:               settings.Ap2Username,
+		Password:               settings.Ap2Password,
+		TeamChannel:            settings.Ap2TeamChannel,
+		NetworkSecurityEnabled: settings.NetworkSecurityEnabled,
+	})
 	arena.networkSwitch = network.NewSwitch(settings.SwitchAddress, settings.SwitchPassword)
 	arena.Plc.SetAddress(settings.PlcAddress)
 	arena.TbaClient = partner.NewTbaClient(settings.TbaEventCode, settings.TbaSecretId, settings.TbaSecret)
@@ -669,7 +688,7 @@ func (arena *Arena) preLoadNextMatch() {
 // Asynchronously reconfigures the networking hardware for the new set of teams.
 func (arena *Arena) setupNetwork(teams [6]*model.Team) {
 	if arena.EventSettings.NetworkSecurityEnabled {
-		if arena.EventSettings.Ap2TeamChannel == 0 {
+		if arena.EventSettings.ApType == model.AccessPointTypeVh113 || arena.EventSettings.Ap2TeamChannel == 0 {
 			// Only one AP is being used.
 			if err := arena.accessPoint.ConfigureTeamWifi(teams); err != nil {
 				log.Printf("Failed to configure team WiFi: %s", err.Error())

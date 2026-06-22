@@ -7,6 +7,20 @@ package model
 
 import "github.com/Team254/cheesy-arena-lite/game"
 
+const (
+	AccessPointTypeLinksys = "linksys"
+	AccessPointTypeVh113   = "vh113"
+)
+
+func NormalizeAccessPointType(apType string) string {
+	switch apType {
+	case AccessPointTypeVh113:
+		return apType
+	default:
+		return AccessPointTypeLinksys
+	}
+}
+
 type EventSettings struct {
 	Id                          int `db:"id"`
 	Name                        string
@@ -20,6 +34,7 @@ type EventSettings struct {
 	TbaSecretId                 string
 	TbaSecret                   string
 	NetworkSecurityEnabled      bool
+	ApType                      string
 	ApAddress                   string
 	ApUsername                  string
 	ApPassword                  string
@@ -47,6 +62,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		return nil, err
 	}
 	if len(allEventSettings) == 1 {
+		allEventSettings[0].ApType = NormalizeAccessPointType(allEventSettings[0].ApType)
 		return &allEventSettings[0], nil
 	}
 
@@ -58,6 +74,7 @@ func (database *Database) GetEventSettings() (*EventSettings, error) {
 		SelectionRound2Order:        "L",
 		SelectionRound3Order:        "",
 		TBADownloadEnabled:          true,
+		ApType:                      AccessPointTypeLinksys,
 		ApTeamChannel:               157,
 		ApAdminChannel:              0,
 		ApAdminWpaKey:               "1234Five",

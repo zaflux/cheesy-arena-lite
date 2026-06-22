@@ -145,12 +145,22 @@
         </fieldset>
         <fieldset>
           <legend>Networking</legend>
-          <p>Enable this setting if you have a Linksys WRT1900ACS access point and Catalyst 3500-series
+          <p id="linksysNetworkingHelp">Enable this setting if you have a Linksys WRT1900ACS access point and Catalyst 3500-series
               switch available, for isolating each team to its own SSID and VLAN.</p>
+          <p id="vh113NetworkingHelp">Use this setting with the VH-113 field radio when one radio serves the entire field.</p>
           <div class="form-group">
             <label class="col-lg-7 control-label">Enable advanced network security</label>
             <div class="col-lg-1 checkbox">
               <input type="checkbox" name="networkSecurityEnabled"{{if .NetworkSecurityEnabled}} checked{{end}}>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-lg-5 control-label">Access Point Type</label>
+            <div class="col-lg-7">
+              <select class="form-control" id="apType" name="apType" onchange="updateAccessPointFields();">
+                <option value="linksys"{{if eq .ApType "linksys"}} selected{{end}}>Linksys WRT1900ACS</option>
+                <option value="vh113"{{if eq .ApType "vh113"}} selected{{end}}>VH-113 Field Radio</option>
+              </select>
             </div>
           </div>
           <div class="form-group">
@@ -159,22 +169,39 @@
               <input type="text" class="form-control" name="apAddress" value="{{.ApAddress}}">
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group linksys-only">
             <label class="col-lg-5 control-label">AP Username</label>
             <div class="col-lg-7">
               <input type="text" class="form-control" name="apUsername" value="{{.ApUsername}}">
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group linksys-only">
             <label class="col-lg-5 control-label">AP Password</label>
             <div class="col-lg-7">
               <input type="password" class="form-control" name="apPassword" value="{{.ApPassword}}">
             </div>
           </div>
           <div class="form-group">
-            <label class="col-lg-5 control-label">AP Team Channel (5GHz)</label>
+            <label class="col-lg-5 control-label" id="apTeamChannelLabel">AP Team Channel (5GHz)</label>
             <div class="col-lg-7">
-              <select class="form-control" name="apTeamChannel" value="{{.ApTeamChannel}}">
+              <select class="form-control" id="apTeamChannel" name="apTeamChannel" value="{{.ApTeamChannel}}">
+                {{if eq .ApType "vh113"}}
+                <option value="5"{{if eq .ApTeamChannel 5}} selected{{end}}>5</option>
+                <option value="13"{{if eq .ApTeamChannel 13}} selected{{end}}>13</option>
+                <option value="21"{{if eq .ApTeamChannel 21}} selected{{end}}>21</option>
+                <option value="29"{{if eq .ApTeamChannel 29}} selected{{end}}>29</option>
+                <option value="37"{{if eq .ApTeamChannel 37}} selected{{end}}>37</option>
+                <option value="45"{{if eq .ApTeamChannel 45}} selected{{end}}>45</option>
+                <option value="53"{{if eq .ApTeamChannel 53}} selected{{end}}>53</option>
+                <option value="61"{{if eq .ApTeamChannel 61}} selected{{end}}>61</option>
+                <option value="69"{{if eq .ApTeamChannel 69}} selected{{end}}>69</option>
+                <option value="77"{{if eq .ApTeamChannel 77}} selected{{end}}>77</option>
+                <option value="85"{{if eq .ApTeamChannel 85}} selected{{end}}>85</option>
+                <option value="93"{{if eq .ApTeamChannel 93}} selected{{end}}>93</option>
+                <option value="101"{{if eq .ApTeamChannel 101}} selected{{end}}>101</option>
+                <option value="109"{{if eq .ApTeamChannel 109}} selected{{end}}>109</option>
+                <option value="117"{{if eq .ApTeamChannel 117}} selected{{end}}>117</option>
+                {{else}}
                 <option{{if eq .ApTeamChannel 36}} selected{{end}}>36</option>
                 <option{{if eq .ApTeamChannel 40}} selected{{end}}>40</option>
                 <option{{if eq .ApTeamChannel 44}} selected{{end}}>44</option>
@@ -183,10 +210,11 @@
                 <option{{if eq .ApTeamChannel 153}} selected{{end}}>153</option>
                 <option{{if eq .ApTeamChannel 157}} selected{{end}}>157</option>
                 <option{{if eq .ApTeamChannel 161}} selected{{end}}>161</option>
+                {{end}}
               </select>
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group linksys-only">
             <label class="col-lg-5 control-label">AP Admin Channel (2.4GHz)</label>
             <div class="col-lg-7">
               <select class="form-control" name="apAdminChannel" value="{{.ApAdminChannel}}">
@@ -197,7 +225,7 @@
               </select>
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group linksys-only">
             <label class="col-lg-5 control-label">AP Admin WPA Key</label>
             <div class="col-lg-7">
               <input type="password" class="form-control" name="apAdminWpaKey" value="{{.ApAdminWpaKey}}">
@@ -215,40 +243,42 @@
               <input type="password" class="form-control" name="switchPassword" value="{{.SwitchPassword}}">
             </div>
           </div>
-          <p>If you have a second access point available and want to use one for each alliance to increase available
-            bandwidth, configure the second one below.</p>
-          <div class="form-group">
-            <label class="col-lg-5 control-label">Second AP Address</label>
-            <div class="col-lg-7">
-              <input type="text" class="form-control" name="ap2Address" value="{{.Ap2Address}}">
+          <div class="linksys-only">
+            <p>If you have a second access point available and want to use one for each alliance to increase available
+              bandwidth, configure the second one below.</p>
+            <div class="form-group">
+              <label class="col-lg-5 control-label">Second AP Address</label>
+              <div class="col-lg-7">
+                <input type="text" class="form-control" name="ap2Address" value="{{.Ap2Address}}">
+              </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="col-lg-5 control-label">Second AP Username</label>
-            <div class="col-lg-7">
-              <input type="text" class="form-control" name="ap2Username" value="{{.Ap2Username}}">
+            <div class="form-group">
+              <label class="col-lg-5 control-label">Second AP Username</label>
+              <div class="col-lg-7">
+                <input type="text" class="form-control" name="ap2Username" value="{{.Ap2Username}}">
+              </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="col-lg-5 control-label">Second AP Password</label>
-            <div class="col-lg-7">
-              <input type="password" class="form-control" name="ap2Password" value="{{.Ap2Password}}">
+            <div class="form-group">
+              <label class="col-lg-5 control-label">Second AP Password</label>
+              <div class="col-lg-7">
+                <input type="password" class="form-control" name="ap2Password" value="{{.Ap2Password}}">
+              </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="col-lg-5 control-label">Second AP Team Channel (5GHz)</label>
-            <div class="col-lg-7">
-              <select class="form-control" name="ap2TeamChannel" value="{{.Ap2TeamChannel}}">
-                <option{{if eq .Ap2TeamChannel 0}} selected{{end}}>Disabled</option>
-                <option{{if eq .Ap2TeamChannel 36}} selected{{end}}>36</option>
-                <option{{if eq .Ap2TeamChannel 40}} selected{{end}}>40</option>
-                <option{{if eq .Ap2TeamChannel 44}} selected{{end}}>44</option>
-                <option{{if eq .Ap2TeamChannel 48}} selected{{end}}>48</option>
-                <option{{if eq .Ap2TeamChannel 149}} selected{{end}}>149</option>
-                <option{{if eq .Ap2TeamChannel 153}} selected{{end}}>153</option>
-                <option{{if eq .Ap2TeamChannel 157}} selected{{end}}>157</option>
-                <option{{if eq .Ap2TeamChannel 161}} selected{{end}}>161</option>
-              </select>
+            <div class="form-group">
+              <label class="col-lg-5 control-label">Second AP Team Channel (5GHz)</label>
+              <div class="col-lg-7">
+                <select class="form-control" name="ap2TeamChannel" value="{{.Ap2TeamChannel}}">
+                  <option{{if eq .Ap2TeamChannel 0}} selected{{end}}>Disabled</option>
+                  <option{{if eq .Ap2TeamChannel 36}} selected{{end}}>36</option>
+                  <option{{if eq .Ap2TeamChannel 40}} selected{{end}}>40</option>
+                  <option{{if eq .Ap2TeamChannel 44}} selected{{end}}>44</option>
+                  <option{{if eq .Ap2TeamChannel 48}} selected{{end}}>48</option>
+                  <option{{if eq .Ap2TeamChannel 149}} selected{{end}}>149</option>
+                  <option{{if eq .Ap2TeamChannel 153}} selected{{end}}>153</option>
+                  <option{{if eq .Ap2TeamChannel 157}} selected{{end}}>157</option>
+                  <option{{if eq .Ap2TeamChannel 161}} selected{{end}}>161</option>
+                </select>
+              </div>
             </div>
           </div>
         </fieldset>
@@ -358,6 +388,37 @@
 {{end}}
 {{define "script"}}
 <script>
+  updateAccessPointChannels = function(apType) {
+    const linksysChannels = [36, 40, 44, 48, 149, 153, 157, 161];
+    const vh113Channels = [5, 13, 21, 29, 37, 45, 53, 61, 69, 77, 85, 93, 101, 109, 117];
+    const select = $("#apTeamChannel");
+    const currentValue = parseInt(select.val());
+    const channels = apType === "vh113" ? vh113Channels : linksysChannels;
+    const fallbackChannel = apType === "vh113" ? 13 : 157;
+    const nextValue = channels.indexOf(currentValue) >= 0 ? currentValue : fallbackChannel;
+
+    select.empty();
+    $.each(channels, function(_, channel) {
+      const option = $("<option></option>").attr("value", channel).text(channel);
+      if (channel === nextValue) {
+        option.prop("selected", true);
+      }
+      select.append(option);
+    });
+
+    $("#apTeamChannelLabel").text(apType === "vh113" ? "Field Channel (6GHz)" : "AP Team Channel (5GHz)");
+  };
+
+  updateAccessPointFields = function() {
+    const apType = $("#apType").val();
+    const isLinksys = apType === "linksys";
+    $("#linksysNetworkingHelp").toggle(isLinksys);
+    $("#vh113NetworkingHelp").toggle(!isLinksys);
+    $(".linksys-only").toggle(isLinksys);
+    $(".linksys-only").find("input, select").prop("disabled", !isLinksys);
+    updateAccessPointChannels(apType);
+  };
+
   updateNumElimAlliances = function(isDoubleElimination) {
     const numElimAlliances = $("input[name=numElimAlliances]");
     numElimAlliances.prop("disabled", isDoubleElimination);
@@ -365,5 +426,7 @@
       numElimAlliances.val(8);
     }
   };
+
+  updateAccessPointFields();
 </script>
 {{end}}

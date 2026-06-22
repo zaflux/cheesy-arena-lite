@@ -1,7 +1,7 @@
 // Copyright 2017 Team 254. All Rights Reserved.
 // Author: pat@patfairbank.com (Patrick Fairbank)
 //
-// Methods for configuring a Linksys WRT1900ACS access point running OpenWRT for team SSIDs and VLANs.
+// Methods for configuring field access points for team SSIDs and VLANs.
 
 package network
 
@@ -26,6 +26,8 @@ const (
 )
 
 type AccessPoint struct {
+	apType                  string
+	disabled                bool
 	address                string
 	username               string
 	password               string
@@ -48,15 +50,40 @@ type sshOutput struct {
 	err    error
 }
 
-func (ap *AccessPoint) SetSettings(address, username, password string, teamChannel, adminChannel int,
-	adminWpaKey string, networkSecurityEnabled bool) {
-	ap.address = address
-	ap.username = username
-	ap.password = password
-	ap.teamChannel = teamChannel
-	ap.adminChannel = adminChannel
-	ap.adminWpaKey = adminWpaKey
-	ap.networkSecurityEnabled = networkSecurityEnabled
+type AccessPointSettings struct {
+	Type                   string
+	Disabled               bool
+	Address                string
+	Username               string
+	Password               string
+	TeamChannel            int
+	AdminChannel           int
+	AdminWpaKey            string
+	NetworkSecurityEnabled bool
+}
+
+func (ap *AccessPoint) SetSettings(settings AccessPointSettings) {
+	normalizedType := model.NormalizeAccessPointType(settings.Type)
+	if settings.Disabled {
+		normalizedType = model.AccessPointTypeLinksys
+	}
+	shouldResetStatuses := ap.apType != normalizedType || ap.disabled != settings.Disabled ||
+		ap.address != settings.Address || ap.networkSecurityEnabled != settings.NetworkSecurityEnabled
+
+	ap.apType = normalizedType
+	ap.disabled = settings.Disabled
+	ap.address = settings.Address
+	ap.username = settings.Username
+	ap.password = settings.Password
+	ap.teamChannel = settings.TeamChannel
+	ap.adminChannel = settings.AdminChannel
+	ap.adminWpaKey = settings.AdminWpaKey
+	ap.networkSecurityEnabled = settings.NetworkSecurityEnabled
+
+	if shouldResetStatuses || !settings.NetworkSecurityEnabled {
+		ap.TeamWifiStatuses = [6]TeamWifiStatus{}
+		ap.initialStatusesFetched = false
+	}
 
 	// Create config channel the first time this method is called.
 	if ap.configRequestChan == nil {
@@ -94,7 +121,10 @@ func (ap *AccessPoint) ConfigureTeamWifi(teams [6]*model.Team) error {
 }
 
 func (ap *AccessPoint) ConfigureAdminWifi() error {
-	if !ap.networkSecurityEnabled {
+	if ap.disabled || !ap.networkSecurityEnabled {
+		return nil
+	}
+	if ap.apType == model.AccessPointTypeVh113 {
 		return nil
 	}
 
@@ -115,7 +145,7 @@ func (ap *AccessPoint) ConfigureAdminWifi() error {
 }
 
 func (ap *AccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
-	if !ap.networkSecurityEnabled {
+	if ap.disabled || !ap.networkSecurityEnabled {
 		return
 	}
 
@@ -123,18 +153,10 @@ func (ap *AccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
 		return
 	}
 
-	// Generate the configuration command.
-	config, err := generateAccessPointConfig(teams)
-	if err != nil {
-		fmt.Printf("Failed to configure team WiFi: %v", err)
-		return
-	}
-	command := fmt.Sprintf("uci batch <<ENDCONFIG && wifi radio0\n%s\nENDCONFIG\n", config)
-
 	// Loop indefinitely at writing the configuration and reading it back until it is successfully applied.
 	attemptCount := 1
 	for {
-		_, err := ap.runCommand(command)
+		err := ap.applyTeamWifiConfiguration(teams)
 
 		// Wait before reading the config back on write success as it doesn't take effect right away, or before retrying
 		// on failure.
@@ -154,6 +176,21 @@ func (ap *AccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
 
 		log.Printf("WiFi configuration still incorrect after %d attempts; trying again.", attemptCount)
 		attemptCount++
+	}
+}
+
+func (ap *AccessPoint) applyTeamWifiConfiguration(teams [6]*model.Team) error {
+	switch ap.apType {
+	case model.AccessPointTypeVh113:
+		return ap.configureVh113TeamWifi(teams)
+	default:
+		config, err := generateAccessPointConfig(teams)
+		if err != nil {
+			return err
+		}
+		command := fmt.Sprintf("uci batch <<ENDCONFIG && wifi radio0\n%s\nENDCONFIG\n", config)
+		_, err = ap.runCommand(command)
+		return err
 	}
 }
 
@@ -178,13 +215,27 @@ func (ap *AccessPoint) configIsCorrectForTeams(teams [6]*model.Team) bool {
 
 // Fetches the current wifi network status from the access point and updates the status structure.
 func (ap *AccessPoint) updateTeamWifiStatuses() error {
+	if ap.disabled {
+		ap.TeamWifiStatuses = [6]TeamWifiStatus{}
+		ap.initialStatusesFetched = false
+		return nil
+	}
 	if !ap.networkSecurityEnabled {
+		ap.TeamWifiStatuses = [6]TeamWifiStatus{}
+		ap.initialStatusesFetched = false
 		return nil
 	}
 
-	output, err := ap.runCommand("iwinfo")
-	if err == nil {
-		err = decodeWifiInfo(output, ap.TeamWifiStatuses[:])
+	var err error
+	switch ap.apType {
+	case model.AccessPointTypeVh113:
+		err = ap.updateVh113TeamWifiStatuses()
+	default:
+		var output string
+		output, err = ap.runCommand("iwinfo")
+		if err == nil {
+			err = decodeWifiInfo(output, ap.TeamWifiStatuses[:])
+		}
 	}
 
 	if err != nil {

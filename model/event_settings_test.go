@@ -24,6 +24,7 @@ func TestEventSettingsReadWrite(t *testing.T) {
 			SelectionRound2Order:        "L",
 			SelectionRound3Order:        "",
 			TBADownloadEnabled:          true,
+			ApType:                      AccessPointTypeLinksys,
 			ApTeamChannel:               157,
 			ApAdminChannel:              0,
 			ApAdminWpaKey:               "1234Five",
@@ -40,6 +41,7 @@ func TestEventSettingsReadWrite(t *testing.T) {
 	eventSettings.NumElimAlliances = 6
 	eventSettings.SelectionRound2Order = "F"
 	eventSettings.SelectionRound3Order = "L"
+	eventSettings.ApType = AccessPointTypeVh113
 	err = db.UpdateEventSettings(eventSettings)
 	assert.Nil(t, err)
 	eventSettings2, err := db.GetEventSettings()
