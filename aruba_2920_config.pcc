@@ -1,0 +1,185 @@
+; J9729A Configuration Editor; Created on release #WB.16.10.0025
+; Ver #14:21.44.08.15.9b.3f.b3.b8.ee.34.79.3c.29.eb.9f.fc.f3.ff.37.ef:29
+; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Access%20Security%20Guide%20for%20AOS-S%20Switch%2016.10.pdf
+; https://arubanetworking.hpe.com/techdocs/AOS-Switch/16.10/Aruba%202920%20Management%20and%20Configuration%20Guide%20for%20ArubaOS-Switch%2016.10.pdf
+
+
+; --- Base Host Configuration
+hostname "TD-SWITCH-1"
+module 1 type j9729a
+
+; --- TimeSync
+timesync ntp
+
+; --- tick and tock (atomic clock)
+ntp server 192.5.41.41
+ntp server 192.5.41.40
+ntp enable
+
+; --- Base IP Configuration
+ip routing
+
+ip access-list extended "vlan100"
+   10 permit ip any any
+   exit
+
+ip access-list extended "DS-FMS"
+   10 permit udp any eq 1145 10.0.100.0 0.0.0.255 eq 1160
+   20 permit tcp any 10.0.100.0 0.0.0.255 eq 1750
+   30 permit icmp any 10.0.100.0 0.0.0.255
+   40 permit icmp any 10.0.0.4 0.255.255.0
+   50 permit udp any any eq 67
+   60 permit udp any any eq 68
+   70 deny ip any any
+   ;10 permit ip any any
+   exit
+
+; --- Static Routes ---
+ip route 0.0.0.0 0.0.0.0 10.0.100.1
+ip route 10.0.0.0 255.0.0.0 reject
+
+; --- Interface Names
+interface 1 name "FMS:Trunk"
+interface 2 name "Admin:Trunk"
+interface 3 name "AP:Trunk"
+interface 4-8 name "Admin:Trunk"
+interface 9-24 name "Default VLan"
+interface 25 name "Red1:DriverStation"
+interface 26-28 name "Red1:Aux"
+interface 29 name "Red2:DriverStation"
+interface 30-32 name "Red2:Aux"
+interface 33 name "Red3:DriverStation"
+interface 34-36 name "Red3:Aux"
+interface 37 name "Blue1:DriverStation"
+interface 38-40 name "Blue1:Aux"
+interface 41 name "Blue2:DriverStation"
+interface 42-44 name "Blue2:Aux"
+interface 45 name "Blue3:DriverStation"
+interface 46-48 name "Blue3:Aux"
+
+; --- Interface Configuration
+no interface 1-48 power-over-ethernet
+
+; --- SNMP
+snmp-server community "public" unrestricted
+snmp-server location "TD"
+
+; --- Virtual LAN IDs
+oobm
+   ip address dhcp-bootp
+   exit
+vlan 1
+   name "DEFAULT_VLAN"
+   untagged 9-24
+   ip address 10.0.0.1 255.255.255.0
+   dhcp-server
+   exit
+vlan 10
+   name "Red1"
+   untagged 25-28
+   tagged 1-8
+   ip address 10.0.1.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 20
+   name "Red2"
+   tagged 1-8
+   untagged 29-32
+   ip address 10.0.2.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 30
+   name "Red3"
+   tagged 1-8
+   untagged 33-36
+   ip address 10.0.3.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 40
+   name "Blue1"
+   tagged 1-8
+   untagged 37-40
+   ip address 10.4.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 50
+   name "Blue2"
+   tagged 1-8
+   untagged 41-44
+   ip address 10.0.5.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 60
+   name "Blue3"
+   tagged 1-8
+   untagged 45-48
+   ip address 10.0.6.4 255.255.255.0
+   ip access-group "DS-FMS" vlan-in
+   exit
+vlan 100
+   name "Admin"
+   untagged 1-8
+   ip address 10.0.100.3 255.255.255.0
+   ip access-group "vlan100" vlan-in
+   dhcp-server
+   exit
+
+; --- DHCP Configuration
+dhcp-server pool "vlan100"
+   authoritative
+   network 10.0.100.0 255.255.255.0
+   range 10.0.100.100 10.0.100.230
+   default-router 10.0.100.3
+   dns-server 8.8.8.8
+   dns-server 8.8.4.4
+   domain-name "team1732.com"
+   lease 00:07:00
+   exit
+
+dhcp-server pool "vlan1"
+   authoritative
+   network 10.0.0.0 255.255.255.0
+   range 10.0.0.100 10.0.0.105
+   default-router 10.0.0.3
+   dns-server 8.8.8.8
+   dns-server 8.8.4.4
+   domain-name "team1732.com"
+   lease 00:07:00
+   exit
+
+; --- Static bindings
+dhcp-server pool "static-binding-FMS"
+   static-bind ip 10.0.100.5 255.255.255.0 mac 88:a2:9e:4a:8c:b5
+   exit
+
+dhcp-server enable
+
+; --- Spanning Tree
+spanning-tree
+spanning-tree mode rapid-pvst
+spanning-tree 2-48 admin-edge-port
+
+; --- SSH Server
+ip ssh
+
+; --- Allow Local Authentication
+aaa authentication ssh login local none
+aaa authentication ssh enable local none
+aaa authentication web login local
+aaa authentication web enable local
+
+; --- Authorization
+; aaa authorization group REST_ADMIN 1 match-command ".*" permit
+
+
+; --- Disable TFTP
+no tftp server
+
+; --- Disable Autorun
+no autorun
+
+no dhcp config-file-update
+no dhcp image-file-update
+password manager plaintext "password"
+password operator plaintext "password"
+

@@ -29,3 +29,8 @@ _testmain.go
 .DS_Store
 static/logs
 static/img/avatars
+
+WB-device-api-v7.0
+bruno
+probe_aruba_rest_endpoints.ps1
+probe_aruba_rest_endpoints.sh
