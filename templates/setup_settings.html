@@ -213,15 +213,38 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="col-lg-5 control-label">Switch Type</label>
+            <div class="col-lg-7">
+              <select class="form-control" name="switchType">
+                <option value="cisco3500" {{if and (ne .SwitchType "aruba2920") (ne .SwitchType "aruba2920batch") (ne .SwitchType "aruba2920ssh")}}selected{{end}}>Cisco Catalyst 3500</option>
+                <option value="aruba2920" {{if eq .SwitchType "aruba2920"}}selected{{end}}>HP/Aruba 2920 (REST API, per-line CLI)</option>
+                <option value="aruba2920batch" {{if eq .SwitchType "aruba2920batch"}}selected{{end}}>HP/Aruba 2920 (REST API, CLI Batch)</option>
+                <option value="aruba2920ssh" {{if eq .SwitchType "aruba2920ssh"}}selected{{end}}>HP/Aruba 2920 (SSH CLI)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="col-lg-5 control-label">Switch Address</label>
             <div class="col-lg-7">
               <input type="text" class="form-control" name="switchAddress" value="{{.SwitchAddress}}">
             </div>
           </div>
           <div class="form-group">
+            <label class="col-lg-5 control-label">Switch Username <small class="text-muted">(Aruba only)</small></label>
+            <div class="col-lg-7">
+              <input type="text" class="form-control" name="switchUsername" value="{{.SwitchUsername}}" placeholder="manager">
+            </div>
+          </div>
+          <div class="form-group">
             <label class="col-lg-5 control-label">Switch Password</label>
             <div class="col-lg-7">
               <input type="password" class="form-control" name="switchPassword" value="{{.SwitchPassword}}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-lg-7 control-label">Enable switch diagnostic logging</label>
+            <div class="col-lg-1 checkbox">
+              <input type="checkbox" name="switchDiagnosticLogging"{{if .SwitchDiagnosticLogging}} checked{{end}}>
             </div>
           </div>
           <p>If you have a second access point available and want to use one for each alliance to increase available

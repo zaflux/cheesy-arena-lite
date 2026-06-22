@@ -7,7 +7,6 @@ package web
 
 import (
 	"fmt"
-	"github.com/Team254/cheesy-arena-lite/model"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Team254/cheesy-arena-lite/model"
 )
 
 // Shows the event settings editing page.
@@ -74,8 +75,11 @@ func (web *Web) settingsPostHandler(w http.ResponseWriter, r *http.Request) {
 	eventSettings.Ap2Username = r.PostFormValue("ap2Username")
 	eventSettings.Ap2Password = r.PostFormValue("ap2Password")
 	eventSettings.Ap2TeamChannel, _ = strconv.Atoi(r.PostFormValue("ap2TeamChannel"))
+	eventSettings.SwitchType = r.PostFormValue("switchType")
 	eventSettings.SwitchAddress = r.PostFormValue("switchAddress")
 	eventSettings.SwitchPassword = r.PostFormValue("switchPassword")
+	eventSettings.SwitchUsername = r.PostFormValue("switchUsername")
+	eventSettings.SwitchDiagnosticLogging = r.PostFormValue("switchDiagnosticLogging") == "on"
 	eventSettings.PlcAddress = r.PostFormValue("plcAddress")
 	eventSettings.AdminPassword = r.PostFormValue("adminPassword")
 	eventSettings.WarmupDurationSec, _ = strconv.Atoi(r.PostFormValue("warmupDurationSec"))
