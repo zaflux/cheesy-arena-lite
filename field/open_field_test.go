@@ -52,6 +52,9 @@ func TestOpenFieldModeToggle(t *testing.T) {
 	assert.Nil(t, arena.OpenFieldSetAuto("R1", true))
 	assert.Nil(t, arena.OpenFieldRunAuto("R1"))
 	assert.True(t, arena.AllianceStations["R1"].DsConn.Enabled)
+	// Pressing Enable during timed auto must not cancel the auto timer.
+	assert.Nil(t, arena.OpenFieldSetEnabled("R1", true))
+	assert.False(t, arena.AllianceStations["R1"].openFieldAutoEndTime.IsZero())
 	assert.Nil(t, arena.SetOpenFieldMode(false))
 	assert.False(t, arena.OpenFieldMode)
 	assert.False(t, arena.AllianceStations["R1"].OpenFieldEnabled)

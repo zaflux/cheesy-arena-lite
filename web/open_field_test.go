@@ -54,6 +54,8 @@ func TestOpenFieldWebsocket(t *testing.T) {
 
 	ws.Write("assignTeam", map[string]interface{}{"teamId": 254, "station": "B1"})
 	assert.Contains(t, readWebsocketError(t, ws), "Open Field mode is not active")
+	ws.Write("disableAll", nil)
+	assert.Contains(t, readWebsocketError(t, ws), "Open Field mode is not active")
 
 	web.arena.OpenFieldMode = true
 	ws.Write("assignTeam", map[string]interface{}{"teamId": 254, "station": "B1"})
