@@ -1,0 +1,133 @@
+{{/*
+  Page for teams to look up or set the WPA key used to program their robot radio for this field.
+*/}}
+{{define "title"}}Team Wi-Fi Password{{end}}
+{{define "body"}}
+<div class="row">
+  <div class="col-lg-8 col-lg-offset-2">
+    {{if .ErrorMessage}}
+      <div class="alert alert-dismissable alert-danger">
+        <button type="button" class="close" data-dismiss="alert">×</button>
+        {{.ErrorMessage}}
+      </div>
+    {{end}}
+    {{if .SuccessMessage}}
+      <div class="alert alert-dismissable alert-success">
+        <button type="button" class="close" data-dismiss="alert">×</button>
+        {{.SuccessMessage}}
+      </div>
+    {{end}}
+    {{if not .EventSettings.NetworkSecurityEnabled}}
+      <div class="alert alert-warning">
+        Advanced network security is currently disabled on this field, so the field access point is not broadcasting
+        per-team networks. Your key will take effect once the FTA enables it.
+      </div>
+    {{end}}
+    <div class="well">
+      <form class="form-horizontal" action="/team_wifi" method="GET">
+        <fieldset>
+          <legend>Look Up Team Wi-Fi Password</legend>
+          <div class="form-group">
+            <label class="col-lg-3 control-label">Team Number</label>
+            <div class="col-lg-6">
+              <input type="number" min="1" class="form-control" name="team" id="teamLookup"
+                value="{{if .Team}}{{.Team.Id}}{{end}}" autofocus>
+            </div>
+            <div class="col-lg-3">
+              <button type="submit" class="btn btn-info">Look Up</button>
+            </div>
+          </div>
+        </fieldset>
+      </form>
+    </div>
+    {{if .Team}}
+      <div class="well">
+        <fieldset>
+          <legend>Team {{.Team.Id}} Robot Radio Settings</legend>
+          <div class="row">
+            <label class="col-lg-3 text-right">SSID</label>
+            <div class="col-lg-9"><samp id="teamSsid" style="font-size: 1.5em;">{{.Team.Id}}</samp></div>
+          </div>
+          <div class="row">
+            <label class="col-lg-3 text-right">WPA Key</label>
+            <div class="col-lg-9"><samp id="teamWpaKey" style="font-size: 1.5em;">{{.Team.WpaKey}}</samp></div>
+          </div>
+          {{if .Station}}
+            <div class="row">
+              <label class="col-lg-3 text-right">On Field</label>
+              <div class="col-lg-9">Station {{.Station}}</div>
+            </div>
+          {{end}}
+        </fieldset>
+        <br />
+        <form class="form-horizontal" action="/team_wifi" method="POST">
+          <input type="hidden" name="team" value="{{.Team.Id}}">
+          <fieldset>
+            <legend>Change WPA Key</legend>
+            <p>
+              {{.MinWpaKeyLength}}-{{.MaxWpaKeyLength}} printable ASCII characters, excluding quotes
+              (<code>'</code> <code>"</code> <code>`</code>), <code>\</code> and <code>$</code>. Keys can't be changed
+              while your robot is enabled or, if you're on the field, while other robots are driving.
+            </p>
+            <div class="form-group">
+              <label class="col-lg-3 control-label">New WPA Key</label>
+              <div class="col-lg-9">
+                <input type="text" class="form-control" name="wpaKey" minlength="{{.MinWpaKeyLength}}"
+                  maxlength="{{.MaxWpaKeyLength}}" autocomplete="off">
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-lg-9 col-lg-offset-3">
+                <button type="submit" class="btn btn-primary" name="action" value="set">Save Key</button>
+                <button type="submit" class="btn btn-default" name="action" value="generate"
+                  formnovalidate onclick="return confirm('Replace the current key with a new random key?');">
+                  Generate Random Key
+                </button>
+              </div>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+      <div class="well">
+        <fieldset>
+          <legend>Programming Your Robot Radio</legend>
+          <p>The field broadcasts a network named with your team number (SSID <b>{{.Team.Id}}</b>) secured with the
+            WPA key above. Your robot radio must be programmed with the same team number and key, or it will not
+            connect to the field. Re-program the radio any time the key changes.</p>
+          {{if eq .EventSettings.ApType "vh113"}}
+            <h5>Vivid-Hosting VH-109 robot radio (this field uses a VH-113 access point)</h5>
+          {{else}}
+            <h5>OpenMesh OM5P robot radio (this field uses a Linksys/OpenWRT access point)</h5>
+          {{end}}
+          {{if eq .EventSettings.ApType "vh113"}}
+            <ol>
+              <li>Connect your laptop to the radio's <b>DS</b> Ethernet port and power the radio.</li>
+              <li>Browse to the radio's configuration page: <code>http://{{.RadioAddress}}</code> once it has been
+                set up for your team, or the factory address in the radio's documentation (typically
+                <code>http://192.168.69.1</code>) if it hasn't.</li>
+              <li>Select <b>Robot Radio</b> mode, enter team number <b>{{.Team.Id}}</b> and the WPA key above, and
+                save. Wait for the radio to reboot.</li>
+            </ol>
+          {{else}}
+            <ol>
+              <li>Connect your laptop to the radio's Ethernet port closest to the power jack and power the radio.</li>
+              <li>Run the <b>FRC Radio Configuration Utility</b> (installed with the FRC Game Tools).</li>
+              <li>Enter team number <b>{{.Team.Id}}</b>, choose a bridge (robot) mode for the field's band, enter the
+                WPA key above in the WPA key field, and click <b>Configure</b>.</li>
+            </ol>
+          {{end}}
+          <p class="text-muted">Exact menu names vary by radio firmware and utility version; if in doubt, ask the FTA.
+            Instructions for the other radio type:
+            {{if eq .EventSettings.ApType "vh113"}}
+              OM5P radios are programmed with the FRC Radio Configuration Utility using the same team number and key.
+            {{else}}
+              VH-109 radios are programmed from their web configuration page using the same team number and key.
+            {{end}}
+          </p>
+        </fieldset>
+      </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{define "script"}}{{end}}
