@@ -38,6 +38,10 @@ func TestTeamWifiLookup(t *testing.T) {
 	recorder = web.getHttpResponse("/team_wifi?team=abc")
 	assert.Equal(t, 400, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "Invalid team number")
+	recorder = web.getHttpResponse("/team_wifi?team=%3Cscript%3E")
+	assert.Equal(t, 400, recorder.Code)
+	assert.NotContains(t, recorder.Body.String(), "<script>")
+	assert.Contains(t, recorder.Body.String(), "&lt;script&gt;")
 	recorder = web.getHttpResponse("/team_wifi?team=-5")
 	assert.Equal(t, 400, recorder.Code)
 }
@@ -62,6 +66,12 @@ func TestTeamWifiSetKey(t *testing.T) {
 	assert.Equal(t, 400, recorder.Code)
 	team, _ = web.arena.Database.GetTeamById(254)
 	assert.Equal(t, "cheesypoofs", team.WpaKey)
+
+	// Keys are HTML-escaped when displayed.
+	recorder = web.postHttpResponse("/team_wifi", "team=254&action=set&wpaKey=%3Cb%3Ebold%3C%2Fb%3E")
+	assert.Equal(t, 303, recorder.Code)
+	recorder = web.getHttpResponse("/team_wifi?team=254")
+	assert.Contains(t, recorder.Body.String(), "&lt;b&gt;bold&lt;/b&gt;")
 
 	// Generates a random key.
 	recorder = web.postHttpResponse("/team_wifi", "team=254&action=generate&wpaKey=")
