@@ -64,6 +64,9 @@ func (arena *Arena) OpenFieldSetEnabled(station string, enabled bool) error {
 		return err
 	}
 	if enabled {
+		if allianceStation.OpenFieldEnabled {
+			return nil
+		}
 		if err = arena.checkCanOpenFieldEnable(allianceStation); err != nil {
 			return err
 		}
