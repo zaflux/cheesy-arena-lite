@@ -25,7 +25,39 @@ const (
 	accessPointConfigRetryIntervalSec = 5
 )
 
-type AccessPoint struct {
+// AccessPointer is implemented by all access point types (Linksys and VH-113).
+type AccessPointer interface {
+	SetSettings(address, username, password string, teamChannel, adminChannel int, adminWpaKey string,
+		networkSecurityEnabled bool)
+	Run()
+	ConfigureTeamWifi(teams [6]*model.Team) error
+	ConfigureAdminWifi() error
+	GetTeamWifiStatuses() [6]TeamWifiStatus
+}
+
+// NewAccessPoint returns the appropriate AccessPointer implementation for the given AP type string.
+// Supported values: "vh113" for Vivid-Hosting VH-113, any other value (including "linksys") for the
+// Linksys WRT1900ACS running OpenWRT.
+func NewAccessPoint(apType string) AccessPointer {
+	if apType == "vh113" {
+		return &VH113AccessPoint{}
+	}
+	return &LinksysAccessPoint{}
+}
+
+// AccessPointType returns a string identifying the concrete type of the given AccessPointer.
+// Returns "vh113" for *VH113AccessPoint, and "linksys" for *LinksysAccessPoint.
+func AccessPointType(ap AccessPointer) string {
+	switch ap.(type) {
+	case *VH113AccessPoint:
+		return "vh113"
+	default:
+		return "linksys"
+	}
+}
+
+// LinksysAccessPoint configures a Linksys WRT1900ACS access point running OpenWRT via SSH.
+type LinksysAccessPoint struct {
 	address                string
 	username               string
 	password               string
@@ -34,7 +66,7 @@ type AccessPoint struct {
 	adminWpaKey            string
 	networkSecurityEnabled bool
 	configRequestChan      chan [6]*model.Team
-	TeamWifiStatuses       [6]TeamWifiStatus
+	teamWifiStatuses       [6]TeamWifiStatus
 	initialStatusesFetched bool
 }
 
@@ -48,7 +80,7 @@ type sshOutput struct {
 	err    error
 }
 
-func (ap *AccessPoint) SetSettings(address, username, password string, teamChannel, adminChannel int,
+func (ap *LinksysAccessPoint) SetSettings(address, username, password string, teamChannel, adminChannel int,
 	adminWpaKey string, networkSecurityEnabled bool) {
 	ap.address = address
 	ap.username = username
@@ -64,8 +96,13 @@ func (ap *AccessPoint) SetSettings(address, username, password string, teamChann
 	}
 }
 
+// GetTeamWifiStatuses returns a copy of the current team wifi statuses.
+func (ap *LinksysAccessPoint) GetTeamWifiStatuses() [6]TeamWifiStatus {
+	return ap.teamWifiStatuses
+}
+
 // Loops indefinitely to read status from and write configurations to the access point.
-func (ap *AccessPoint) Run() {
+func (ap *LinksysAccessPoint) Run() {
 	for {
 		// Check if there are any pending configuration requests; if not, periodically poll wifi status.
 		select {
@@ -83,7 +120,7 @@ func (ap *AccessPoint) Run() {
 }
 
 // Adds a request to set up wireless networks for the given set of teams to the asynchronous queue.
-func (ap *AccessPoint) ConfigureTeamWifi(teams [6]*model.Team) error {
+func (ap *LinksysAccessPoint) ConfigureTeamWifi(teams [6]*model.Team) error {
 	// Use a channel to serialize configuration requests; the monitoring goroutine will service them.
 	select {
 	case ap.configRequestChan <- teams:
@@ -93,7 +130,7 @@ func (ap *AccessPoint) ConfigureTeamWifi(teams [6]*model.Team) error {
 	}
 }
 
-func (ap *AccessPoint) ConfigureAdminWifi() error {
+func (ap *LinksysAccessPoint) ConfigureAdminWifi() error {
 	if !ap.networkSecurityEnabled {
 		return nil
 	}
@@ -114,7 +151,7 @@ func (ap *AccessPoint) ConfigureAdminWifi() error {
 	return err
 }
 
-func (ap *AccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
+func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
 	if !ap.networkSecurityEnabled {
 		return
 	}
@@ -158,7 +195,7 @@ func (ap *AccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) {
 }
 
 // Returns true if the configured networks as read from the access point match the given teams.
-func (ap *AccessPoint) configIsCorrectForTeams(teams [6]*model.Team) bool {
+func (ap *LinksysAccessPoint) configIsCorrectForTeams(teams [6]*model.Team) bool {
 	if !ap.initialStatusesFetched {
 		return false
 	}
@@ -168,7 +205,7 @@ func (ap *AccessPoint) configIsCorrectForTeams(teams [6]*model.Team) bool {
 		if team != nil {
 			expectedTeamId = team.Id
 		}
-		if ap.TeamWifiStatuses[i].TeamId != expectedTeamId {
+		if ap.teamWifiStatuses[i].TeamId != expectedTeamId {
 			return false
 		}
 	}
@@ -177,14 +214,14 @@ func (ap *AccessPoint) configIsCorrectForTeams(teams [6]*model.Team) bool {
 }
 
 // Fetches the current wifi network status from the access point and updates the status structure.
-func (ap *AccessPoint) updateTeamWifiStatuses() error {
+func (ap *LinksysAccessPoint) updateTeamWifiStatuses() error {
 	if !ap.networkSecurityEnabled {
 		return nil
 	}
 
 	output, err := ap.runCommand("iwinfo")
 	if err == nil {
-		err = decodeWifiInfo(output, ap.TeamWifiStatuses[:])
+		err = decodeWifiInfo(output, ap.teamWifiStatuses[:])
 	}
 
 	if err != nil {
@@ -198,7 +235,7 @@ func (ap *AccessPoint) updateTeamWifiStatuses() error {
 }
 
 // Logs into the access point via SSH and runs the given shell command.
-func (ap *AccessPoint) runCommand(command string) (string, error) {
+func (ap *LinksysAccessPoint) runCommand(command string) (string, error) {
 	// Open an SSH connection to the AP.
 	config := &ssh.ClientConfig{User: ap.username,
 		Auth:            []ssh.AuthMethod{ssh.Password(ap.password)},
