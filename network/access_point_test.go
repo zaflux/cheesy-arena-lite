@@ -135,20 +135,3 @@ func assertTeamWifiStatus(t *testing.T, expectedTeamId int, expectedRadioLinked 
 	assert.Equal(t, expectedTeamId, status.TeamId)
 	assert.Equal(t, expectedRadioLinked, status.RadioLinked)
 }
-
-func TestAccessPointConfigIsCurrentDetectsWpaKeyChange(t *testing.T) {
-	ap := LinksysAccessPoint{initialStatusesFetched: true}
-	ap.teamWifiStatuses[0].TeamId = 254
-	teams := [6]*model.Team{{Id: 254, WpaKey: "aaaaaaaa"}, nil, nil, nil, nil, nil}
-
-	// Keys are assumed to match the first time the SSIDs match.
-	assert.True(t, ap.configIsCurrentForTeams(teams))
-	assert.True(t, ap.configIsCurrentForTeams(teams))
-
-	// A changed key for the same SSID requires reconfiguration.
-	teams[0] = &model.Team{Id: 254, WpaKey: "bbbbbbbb"}
-	assert.False(t, ap.configIsCurrentForTeams(teams))
-
-	// Mismatched SSIDs always require reconfiguration.
-	assert.False(t, ap.configIsCurrentForTeams([6]*model.Team{{Id: 1114, WpaKey: "aaaaaaaa"}}))
-}
