@@ -103,4 +103,10 @@ func TestStationControlWebsocket(t *testing.T) {
 	assert.Contains(t, readWebsocketError(t, ws), "Failed to parse 'setAuto' message")
 	ws.Write("blorpy", nil)
 	assert.Contains(t, readWebsocketError(t, ws), "Invalid message type 'blorpy'")
+
+	// E-stop latches and disables the station.
+	ws.Write("estop", nil)
+	readWebsocketMultiple(t, ws, 2)
+	assert.True(t, web.arena.AllianceStations["R3"].Estop)
+	assert.False(t, web.arena.AllianceStations["R3"].OpenFieldEnabled)
 }

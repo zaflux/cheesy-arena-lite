@@ -79,6 +79,10 @@
             <td>
               <button type="button" class="btn btn-sm"
                   style="background: #c9302c; border-color: #a52a2a; color: #fff;" onclick="disableStation('{{$option.Station}}');">Disable</button>
+              <button type="button" class="btn btn-sm btn-danger"
+                  onclick="estopStation('{{$option.Station}}');">E-Stop</button>
+              <button type="button" class="btn btn-sm btn-default"
+                  onclick="clearEstop('{{$option.Station}}');">Clear E-Stop</button>
             </td>
           </tr>
           {{end}}

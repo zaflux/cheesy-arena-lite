@@ -27,6 +27,14 @@ var disableStation = function(station) {
   send("disableStation", station);
 };
 
+var estopStation = function(station) {
+  send("estopStation", station);
+};
+
+var clearEstop = function(station) {
+  send("clearEstop", station);
+};
+
 // Sends a websocket message to assign the entered team to the given station.
 var assignTeam = function(station) {
   var teamId = parseInt($("#station" + station + " .team-input").val());
