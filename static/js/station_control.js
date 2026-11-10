@@ -59,6 +59,10 @@ var runAuto = function() {
   send("runAuto");
 };
 
+var estopRobot = function() {
+  send("estop");
+};
+
 // Updates the displayed team in this station.
 var updateTeam = function(team) {
   currentTeamId = team ? team.Id : 0;
@@ -119,7 +123,10 @@ var handleArenaStatus = function(data) {
   if (stopped) {
     robotState.attr("data-state", "estop").text(stationStatus.Estop ? "E-STOPPED" : "A-STOPPED");
   } else if (stationStatus.OpenFieldEnabled) {
-    robotState.attr("data-state", "enabled").text("ENABLED - " + (stationStatus.OpenFieldAuto ? "AUTO" : "TELEOP"));
+    var autoRemaining = stationStatus.OpenFieldAutoRemainingSec > 0 ?
+        " (" + Math.ceil(stationStatus.OpenFieldAutoRemainingSec) + "s)" : "";
+    robotState.attr("data-state", "enabled")
+        .text("ENABLED - " + (stationStatus.OpenFieldAuto ? "AUTO" + autoRemaining : "TELEOP"));
   } else {
     robotState.attr("data-state", "disabled").text("DISABLED - " + (stationStatus.OpenFieldAuto ? "AUTO" : "TELEOP"));
   }

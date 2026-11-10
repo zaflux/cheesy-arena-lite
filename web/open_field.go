@@ -109,6 +109,17 @@ func (web *Web) openFieldWebsocketHandler(w http.ResponseWriter, r *http.Request
 				continue
 			}
 			err = web.arena.OpenFieldSetEnabled(station, false)
+		case "estopStation", "clearEstop":
+			station, ok := data.(string)
+			if !ok {
+				ws.WriteError(fmt.Sprintf("Failed to parse '%s' message.", messageType))
+				continue
+			}
+			if messageType == "estopStation" {
+				err = web.arena.OpenFieldEstop(station)
+			} else {
+				err = web.arena.OpenFieldClearEstop(station)
+			}
 		case "disableAll":
 			web.arena.OpenFieldDisableAll()
 		default:

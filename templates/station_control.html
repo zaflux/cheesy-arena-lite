@@ -105,8 +105,11 @@
     <button type="button" id="runAutoButton" class="btn btn-warning control-btn" onclick="runAuto();">
       Run Auto ({{.AutoDurationSec}}s)
     </button>
+    <button type="button" id="estopButton" class="btn btn-danger control-btn" onclick="estopRobot();">
+      E-STOP
+    </button>
     <p class="text-muted">
-      Press <b>SPACE</b> at any time to disable the robot. "Run Auto" enables autonomous for
+      An E-stop stays latched until the FTA clears it from the Open Field page. Press <b>SPACE</b> at any time to disable the robot. "Run Auto" enables autonomous for
       {{.AutoDurationSec}} seconds and then disables the robot.
     </p>
   </div>

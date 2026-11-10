@@ -133,6 +133,8 @@ func (web *Web) stationControlWebsocketHandler(w http.ResponseWriter, r *http.Re
 			err = web.arena.OpenFieldSetAuto(station, auto)
 		case "runAuto":
 			err = web.arena.OpenFieldRunAuto(station)
+		case "estop":
+			err = web.arena.OpenFieldEstop(station)
 		default:
 			ws.WriteError(fmt.Sprintf("Invalid message type '%s'.", messageType))
 			continue

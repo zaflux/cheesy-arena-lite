@@ -82,4 +82,13 @@ func TestOpenFieldWebsocket(t *testing.T) {
 	assert.Contains(t, readWebsocketError(t, ws), "Failed to parse 'disableStation' message")
 	ws.Write("blorpy", nil)
 	assert.Contains(t, readWebsocketError(t, ws), "Invalid message type 'blorpy'")
+	ws.Write("estopStation", 5)
+	assert.Contains(t, readWebsocketError(t, ws), "Failed to parse 'estopStation' message")
+
+	ws.Write("estopStation", "B2")
+	readWebsocketMultiple(t, ws, 2)
+	assert.True(t, web.arena.AllianceStations["B2"].Estop)
+	ws.Write("clearEstop", "B2")
+	readWebsocketMultiple(t, ws, 2)
+	assert.False(t, web.arena.AllianceStations["B2"].Estop)
 }
