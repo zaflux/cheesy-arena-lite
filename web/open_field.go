@@ -121,6 +121,10 @@ func (web *Web) openFieldWebsocketHandler(w http.ResponseWriter, r *http.Request
 				err = web.arena.OpenFieldClearEstop(station)
 			}
 		case "disableAll":
+			if !web.arena.OpenFieldMode {
+				ws.WriteError("Open Field mode is not active; use Abort Match on the Match Play page to stop a match.")
+				continue
+			}
 			web.arena.OpenFieldDisableAll()
 		default:
 			ws.WriteError(fmt.Sprintf("Invalid message type '%s'.", messageType))
