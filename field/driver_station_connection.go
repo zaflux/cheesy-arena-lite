@@ -222,24 +222,28 @@ func (dsConn *DriverStationConnection) encodeControlPacket(arena *Arena) [22]byt
 
 	// Remaining number of seconds in match.
 	var matchSecondsRemaining int
-	switch arena.MatchState {
-	case PreMatch:
-		fallthrough
-	case TimeoutActive:
-		fallthrough
-	case PostTimeout:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec
-	case StartMatch:
-		fallthrough
-	case AutoPeriod:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec - int(arena.MatchTimeSec())
-	case PausePeriod:
-		matchSecondsRemaining = game.MatchTiming.TeleopDurationSec
-	case TeleopPeriod:
-		matchSecondsRemaining = game.MatchTiming.AutoDurationSec + game.MatchTiming.TeleopDurationSec +
-			game.MatchTiming.PauseDurationSec - int(arena.MatchTimeSec())
-	default:
-		matchSecondsRemaining = 0
+	if allianceStation, ok := arena.AllianceStations[dsConn.AllianceStation]; ok && arena.OpenFieldMode {
+		matchSecondsRemaining = allianceStation.openFieldMatchSecondsRemaining()
+	} else {
+		switch arena.MatchState {
+		case PreMatch:
+			fallthrough
+		case TimeoutActive:
+			fallthrough
+		case PostTimeout:
+			matchSecondsRemaining = game.MatchTiming.AutoDurationSec
+		case StartMatch:
+			fallthrough
+		case AutoPeriod:
+			matchSecondsRemaining = game.MatchTiming.AutoDurationSec - int(arena.MatchTimeSec())
+		case PausePeriod:
+			matchSecondsRemaining = game.MatchTiming.TeleopDurationSec
+		case TeleopPeriod:
+			matchSecondsRemaining = game.MatchTiming.AutoDurationSec + game.MatchTiming.TeleopDurationSec +
+				game.MatchTiming.PauseDurationSec - int(arena.MatchTimeSec())
+		default:
+			matchSecondsRemaining = 0
+		}
 	}
 	packet[20] = byte(matchSecondsRemaining >> 8 & 0xff)
 	packet[21] = byte(matchSecondsRemaining & 0xff)
@@ -354,6 +358,7 @@ func (arena *Arena) listenForDriverStations() {
 			tcpConn.Close()
 			continue
 		}
+		arena.disableOpenFieldStation(assignedStation)
 		arena.AllianceStations[assignedStation].DsConn = dsConn
 
 		if wrongAssignedStation != "" {
@@ -373,7 +378,11 @@ func (dsConn *DriverStationConnection) handleTcpConnection(arena *Arena) {
 		if err != nil {
 			log.Printf("Error reading from connection for Team %d: %v", dsConn.TeamId, err)
 			dsConn.close()
-			arena.AllianceStations[dsConn.AllianceStation].DsConn = nil
+			allianceStation := arena.AllianceStations[dsConn.AllianceStation]
+			if allianceStation.DsConn == dsConn {
+				allianceStation.DsConn = nil
+				arena.disableOpenFieldStation(dsConn.AllianceStation)
+			}
 			break
 		}
 
