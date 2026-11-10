@@ -8,7 +8,7 @@
     {{if .ErrorMessage}}
       <div class="alert alert-dismissable alert-danger">
         <button type="button" class="close" data-dismiss="alert">×</button>
-        {{.ErrorMessage}}
+        {{.ErrorMessage | html}}
       </div>
     {{end}}
     {{if .SuccessMessage}}
@@ -50,7 +50,7 @@
           </div>
           <div class="row">
             <label class="col-lg-3 text-right">WPA Key</label>
-            <div class="col-lg-9"><samp id="teamWpaKey" style="font-size: 1.5em;">{{.Team.WpaKey}}</samp></div>
+            <div class="col-lg-9"><samp id="teamWpaKey" style="font-size: 1.5em;">{{.Team.WpaKey | html}}</samp></div>
           </div>
           {{if .Station}}
             <div class="row">
