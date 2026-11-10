@@ -161,7 +161,8 @@ func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) 
 		return
 	}
 
-	// Generate the configuration command.
+	// Generate the configuration command, capturing the keys being applied in case the team records change meanwhile.
+	wpaKeys := teamWpaKeys(teams)
 	config, err := generateAccessPointConfig(teams)
 	if err != nil {
 		fmt.Printf("Failed to configure team WiFi: %v", err)
@@ -181,7 +182,6 @@ func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) 
 		if err == nil {
 			err = ap.updateTeamWifiStatuses()
 			if err == nil && ap.configIsCorrectForTeams(teams) {
-				wpaKeys := teamWpaKeys(teams)
 				ap.lastWpaKeys = &wpaKeys
 				log.Printf("Successfully configured WiFi after %d attempts.", attemptCount)
 				return
