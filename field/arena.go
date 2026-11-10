@@ -79,6 +79,7 @@ type Arena struct {
 	ShowLowerThird             bool
 	MuteMatchSounds            bool
 	matchAborted               bool
+	OpenFieldMode              bool
 	soundsPlayed               map[*game.MatchSound]struct{}
 }
 
@@ -89,6 +90,10 @@ type AllianceStation struct {
 	Estop    bool
 	Bypass   bool
 	Team     *model.Team
+
+	// Open Field mode state for this station.
+	OpenFieldEnabled bool
+	OpenFieldAuto    bool
 }
 
 // Creates the arena and sets it to its initial state.
