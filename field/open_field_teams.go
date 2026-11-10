@@ -23,15 +23,15 @@ func (arena *Arena) OpenFieldAssignTeam(teamId int, station string) error {
 		return arena.OpenFieldClearStation(station)
 	}
 
-	allianceStation := arena.AllianceStations[station]
-	if allianceStation.Team != nil && allianceStation.Team.Id == teamId {
-		// The team is already in the requested station; nothing to do.
-		return nil
-	}
-
 	team, err := arena.EnsureTeamWpaKey(teamId)
 	if err != nil {
 		return err
+	}
+
+	allianceStation := arena.AllianceStations[station]
+	if allianceStation.Team != nil && allianceStation.Team.Id == teamId {
+		// The team is already in the requested station; EnsureTeamWpaKey has fixed up any missing key.
+		return nil
 	}
 
 	// Remove the team from any other station it is currently occupying.
