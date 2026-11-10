@@ -8,16 +8,14 @@ package web
 import (
 	"bytes"
 	"fmt"
+	"github.com/Team254/cheesy-arena-lite/field"
 	"github.com/Team254/cheesy-arena-lite/model"
-	"github.com/dchest/uniuri"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
-
-const wpaKeyLength = 8
 
 // Shows the team list.
 func (web *Web) teamsGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +168,8 @@ func (web *Web) teamEditPostHandler(w http.ResponseWriter, r *http.Request) {
 	team.Accomplishments = r.PostFormValue("accomplishments")
 	if web.arena.EventSettings.NetworkSecurityEnabled {
 		team.WpaKey = r.PostFormValue("wpaKey")
-		if len(team.WpaKey) < 8 || len(team.WpaKey) > 63 {
-			handleWebErr(w, fmt.Errorf("WPA key must be between 8 and 63 characters."))
+		if err = field.ValidateWpaKey(team.WpaKey); err != nil {
+			handleWebErr(w, err)
 			return
 		}
 	}
@@ -246,7 +244,7 @@ func (web *Web) teamsGenerateWpaKeysHandler(w http.ResponseWriter, r *http.Reque
 	}
 	for _, team := range teams {
 		if len(team.WpaKey) == 0 || generateAllKeys {
-			team.WpaKey = uniuri.NewLen(wpaKeyLength)
+			team.WpaKey = field.GenerateTeamWpaKey()
 			web.arena.Database.UpdateTeam(&team)
 		}
 	}

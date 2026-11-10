@@ -154,6 +154,13 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="col-lg-7 control-label">Allow teams to view and set their own Wi-Fi keys at
+              <a href="/team_wifi">/team_wifi</a></label>
+            <div class="col-lg-1 checkbox">
+              <input type="checkbox" name="teamWifiSelfServiceEnabled"{{if not .TeamWifiSelfServiceDisabled}} checked{{end}}>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="col-lg-5 control-label">AP Type</label>
             <div class="col-lg-7">
               <select class="form-control" name="apType">
