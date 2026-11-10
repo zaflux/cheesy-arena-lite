@@ -38,8 +38,8 @@ type VH113AccessPoint struct {
 
 // vh113ConfigurationRequest is the JSON body for POST /configuration.
 type vh113ConfigurationRequest struct {
-	Channel               int                              `json:"channel"`
-	StationConfigurations map[string]vh113StationConfig    `json:"stationConfigurations"`
+	Channel               int                           `json:"channel"`
+	StationConfigurations map[string]vh113StationConfig `json:"stationConfigurations"`
 }
 
 type vh113StationConfig struct {
@@ -49,8 +49,8 @@ type vh113StationConfig struct {
 
 // vh113StatusResponse is the JSON body returned by GET /status.
 type vh113StatusResponse struct {
-	Channel         int                         `json:"channel"`
-	Status          string                      `json:"status"`
+	Channel         int                            `json:"channel"`
+	Status          string                         `json:"status"`
 	StationStatuses map[string]*vh113StationStatus `json:"stationStatuses"`
 }
 
