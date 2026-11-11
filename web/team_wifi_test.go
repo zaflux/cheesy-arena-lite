@@ -95,7 +95,6 @@ func TestTeamWifiSetKey(t *testing.T) {
 func TestTeamWifiSelfServiceDisabled(t *testing.T) {
 	web := setupTestWeb(t)
 	web.arena.EventSettings.AdminPassword = "admin"
-	web.arena.EventSettings.TeamWifiSelfServiceDisabled = true
 	web.arena.Database.CreateTeam(&model.Team{Id: 254, WpaKey: "aaaaaaaa"})
 
 	recorder := web.getHttpResponse("/team_wifi?team=254")
@@ -113,23 +112,28 @@ func TestTeamWifiSelfServiceDisabled(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	assert.Contains(t, recorder.Body.String(), "aaaaaaaa")
 
-	// Self-service is enabled by default.
+	// Self-service is off (admin-only) by default, and enabling it makes the page public.
 	web = setupTestWeb(t)
-	assert.False(t, web.arena.EventSettings.TeamWifiSelfServiceDisabled)
+	assert.False(t, web.arena.EventSettings.TeamWifiSelfServiceEnabled)
+	web.arena.EventSettings.TeamWifiSelfServiceEnabled = true
+	web.arena.Database.CreateTeam(&model.Team{Id: 1114, WpaKey: "bbbbbbbb"})
+	recorder = web.getHttpResponse("/team_wifi?team=1114")
+	assert.Equal(t, 200, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "bbbbbbbb")
 }
 
 func TestSetupSettingsTeamWifiSelfService(t *testing.T) {
 	web := setupTestWeb(t)
 
 	recorder := web.getHttpResponse("/setup/settings")
-	assert.Contains(t, recorder.Body.String(), "name=\"teamWifiSelfServiceEnabled\" checked")
+	assert.NotContains(t, recorder.Body.String(), "teamWifiSelfServiceEnabled\" checked")
 
 	recorder = web.postHttpResponse("/setup/settings", "name=Chezy Champs&elimType=single&numElimAlliances=8")
 	assert.Equal(t, 303, recorder.Code)
-	assert.True(t, web.arena.EventSettings.TeamWifiSelfServiceDisabled)
+	assert.False(t, web.arena.EventSettings.TeamWifiSelfServiceEnabled)
 
 	recorder = web.postHttpResponse("/setup/settings",
 		"name=Chezy Champs&elimType=single&numElimAlliances=8&teamWifiSelfServiceEnabled=on")
 	assert.Equal(t, 303, recorder.Code)
-	assert.False(t, web.arena.EventSettings.TeamWifiSelfServiceDisabled)
+	assert.True(t, web.arena.EventSettings.TeamWifiSelfServiceEnabled)
 }

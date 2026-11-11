@@ -69,10 +69,10 @@ func (web *Web) teamWifiPostHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/team_wifi?team=%d&saved=true", teamId), 303)
 }
 
-// Returns true if the current user may view and change team WPA keys. When team self-service is disabled in the
-// event settings, this requires an admin login (redirecting to the login page otherwise).
+// Returns true if the current user may view and change team WPA keys. Team self-service is off by default and
+// requires an admin login (redirecting to the login page otherwise) unless enabled in the event settings.
 func (web *Web) canUseTeamWifi(w http.ResponseWriter, r *http.Request) bool {
-	if !web.arena.EventSettings.TeamWifiSelfServiceDisabled {
+	if web.arena.EventSettings.TeamWifiSelfServiceEnabled {
 		return true
 	}
 	return web.userIsAdmin(w, r)

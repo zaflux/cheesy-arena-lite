@@ -157,7 +157,7 @@
             <label class="col-lg-7 control-label">Allow teams to view and set their own Wi-Fi keys at
               <a href="/team_wifi">/team_wifi</a></label>
             <div class="col-lg-1 checkbox">
-              <input type="checkbox" name="teamWifiSelfServiceEnabled"{{if not .TeamWifiSelfServiceDisabled}} checked{{end}}>
+              <input type="checkbox" name="teamWifiSelfServiceEnabled"{{if .TeamWifiSelfServiceEnabled}} checked{{end}}>
             </div>
           </div>
           <div class="form-group">

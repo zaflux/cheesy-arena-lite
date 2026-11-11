@@ -20,7 +20,7 @@ type EventSettings struct {
 	TbaSecretId                 string
 	TbaSecret                   string
 	NetworkSecurityEnabled      bool
-	TeamWifiSelfServiceDisabled bool
+	TeamWifiSelfServiceEnabled  bool
 	ApType                      string
 	ApAddress                   string
 	ApUsername                  string
