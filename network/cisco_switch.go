@@ -99,7 +99,7 @@ func (sw *CiscoSwitch) getTeamVlans() (map[int]int, error) {
 	}
 
 	// Parse out the team IDs and VLANs from the config dump.
-	re := regexp.MustCompile("(?s)interface Vlan(\\d\\d)\\s+ip address 10\\.(\\d+)\\.(\\d+)\\.4")
+	re := regexp.MustCompile("interface Vlan([1-6]0)[^\\n]*\\n[^\\n]*ip address 10\\.(\\d+)\\.(\\d+)\\.61")
 	teamVlanMatches := re.FindAllStringSubmatch(config, -1)
 	if teamVlanMatches == nil {
 		// There are probably no teams currently configured.
@@ -112,6 +112,10 @@ func (sw *CiscoSwitch) getTeamVlans() (map[int]int, error) {
 		team100s, _ := strconv.Atoi(match[2])
 		team1s, _ := strconv.Atoi(match[3])
 		team := teamIDFromSubnetOctets(team100s, team1s)
+		if team < 1 || team > 99999 {
+			// A 0 octet isn't a valid team number, so this isn't a team VLAN.
+			continue
+		}
 		vlan, _ := strconv.Atoi(match[1])
 		teamVlans[team] = vlan
 	}
