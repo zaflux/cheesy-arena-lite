@@ -1,0 +1,97 @@
+{{/*
+  FTA page for turning Open Field mode on/off, assigning teams to stations, and monitoring/disabling robots.
+*/}}
+{{define "title"}}Open Field{{end}}
+{{define "body"}}
+<div class="row">
+  <div class="col-lg-12">
+    <div id="errorMessage" class="alert alert-danger" style="display: none;">
+      <button type="button" class="close" onclick="$('#errorMessage').hide();">&times;</button>
+      <span id="errorText"></span>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col-lg-4">
+    <div class="well">
+      <legend>Open Field Mode</legend>
+      <p>
+        Status:
+        <span id="openFieldModeStatus" class="label {{if .OpenFieldMode}}label-success{{else}}label-default{{end}}">
+          {{if .OpenFieldMode}}ON{{else}}OFF{{end}}
+        </span>
+      </p>
+      <p class="text-muted">
+        When on, teams can claim stations and enable/disable their own robots from the
+        <a href="/station_control">Station Control</a> page, without running a match.
+      </p>
+      <button type="button" class="btn btn-success" onclick="setOpenFieldMode(true);">Turn On</button>
+      <button type="button" class="btn btn-default" onclick="setOpenFieldMode(false);">Turn Off</button>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <button type="button" id="disableAllButton" class="btn btn-lg btn-block"
+        style="font-size: 36px; padding: 30px; background: #c9302c; border-color: #a52a2a; color: #fff;" onclick="disableAll();">
+      DISABLE ALL ROBOTS
+    </button>
+  </div>
+</div>
+<div class="row">
+  <div class="col-lg-12">
+    <div class="well">
+      <legend>Stations</legend>
+      <table class="table table-condensed" id="stationTable">
+        <thead>
+          <tr>
+            <th>Station</th>
+            <th>Team</th>
+            <th class="text-center">DS</th>
+            <th class="text-center">Rad</th>
+            <th class="text-center">Rbt</th>
+            <th>Battery</th>
+            <th>E-Stop</th>
+            <th>State</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range $option := .Stations}}
+          <tr id="station{{$option.Station}}" class="{{if $option.IsRed}}danger{{else}}info{{end}}">
+            <td>
+              <b>{{$option.Name}}</b><br />
+              <a href="/station_control?station={{$option.Station}}" target="_blank">Station page</a>
+            </td>
+            <td>
+              <form class="form-inline" onsubmit="assignTeam('{{$option.Station}}'); return false;">
+                <input type="number" class="form-control input-sm team-input" style="width: 90px;"
+                    value="{{with index $.TeamIds $option.Station}}{{.}}{{end}}">
+                <button type="submit" class="btn btn-sm btn-info">Assign</button>
+                <button type="button" class="btn btn-sm btn-default"
+                    onclick="clearStation('{{$option.Station}}');">Clear</button>
+              </form>
+            </td>
+            <td><div class="ds-status"></div></td>
+            <td><div class="radio-status"></div></td>
+            <td><div class="robot-status"></div></td>
+            <td class="battery"></td>
+            <td class="estop"></td>
+            <td class="robot-state"></td>
+            <td>
+              <button type="button" class="btn btn-sm"
+                  style="background: #c9302c; border-color: #a52a2a; color: #fff;" onclick="disableStation('{{$option.Station}}');">Disable</button>
+              <button type="button" class="btn btn-sm btn-danger"
+                  onclick="estopStation('{{$option.Station}}');">E-Stop</button>
+              <button type="button" class="btn btn-sm btn-default"
+                  onclick="clearEstop('{{$option.Station}}');">Clear E-Stop</button>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}
+{{define "script"}}
+<script src="/static/js/open_field.js"></script>
+{{end}}

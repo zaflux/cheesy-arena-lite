@@ -90,9 +90,10 @@ func (arena *Arena) generateArenaStatusMessage() interface{} {
 		PlcIsHealthy          bool
 		FieldEstop            bool
 		PlcArmorBlockStatuses map[string]bool
+		OpenFieldMode         bool
 	}{arena.CurrentMatch.Id, arena.AllianceStations, teamWifiStatuses, arena.MatchState,
 		arena.checkCanStartMatch() == nil, arena.Plc.IsHealthy, arena.Plc.GetFieldEstop(),
-		arena.Plc.GetArmorBlockStatuses()}
+		arena.Plc.GetArmorBlockStatuses(), arena.OpenFieldMode}
 }
 
 func (arena *Arena) generateAudienceDisplayModeMessage() interface{} {

@@ -1,0 +1,124 @@
+{{/*
+  Per-station control page for Open Field mode, used by each team at its driver station to claim the station and
+  enable/disable its robot.
+*/}}
+{{define "title"}}Station Control{{if .StationName}} - {{.StationName}}{{end}}{{end}}
+{{define "head"}}
+<style>
+  .station-header { padding: 10px 15px; border-radius: 4px; color: #fff; margin: 15px 0; }
+  .station-header h2 { margin: 0; color: #fff; }
+  .station-header a { color: #fff; text-decoration: underline; }
+  .station-red { background-color: #c33; }
+  .station-blue { background-color: #26c; }
+  .station-pick .btn { width: 100%; margin-bottom: 15px; font-size: 28px; padding: 20px; }
+  #currentTeam { font-size: 48px; font-weight: bold; }
+  .control-btn { width: 100%; font-size: 36px; padding: 25px 10px; margin-bottom: 15px; }
+  .btn-solid-red, .btn-solid-red:hover, .btn-solid-red:focus { background: #c9302c; border-color: #a52a2a; color: #fff; }
+  .btn-solid-blue, .btn-solid-blue:hover, .btn-solid-blue:focus { background: #2266cc; border-color: #1a4f9e; color: #fff; }
+  #disableButton { font-size: 44px; }
+  #robotState { font-size: 32px; font-weight: bold; padding: 15px; border-radius: 4px; text-align: center;
+    margin-bottom: 15px; background-color: #aaa; color: #fff; }
+  #robotState[data-state="enabled"] { background-color: #0a5; }
+  #robotState[data-state="disabled"] { background-color: #c33; }
+  #robotState[data-state="estop"] { background-color: #000; }
+  .station-status-table td { vertical-align: middle !important; }
+  .station-status-table .ds-status, .station-status-table .radio-status,
+  .station-status-table .robot-status { width: 80px; text-align: center; }
+  #modeButtons .btn { width: 50%; font-size: 22px; }
+</style>
+{{end}}
+{{define "body"}}
+{{if not .Station}}
+<div class="station-header" style="background-color: #444;"><h2>Station Control</h2></div>
+<p class="lead">Select the alliance station you are driving from.</p>
+<div class="row station-pick">
+  <div class="col-sm-6">
+    {{range $option := .Stations}}{{if $option.IsRed}}
+      <a class="btn btn-solid-red" href="/station_control?station={{$option.Station}}">{{$option.Name}}</a>
+    {{end}}{{end}}
+  </div>
+  <div class="col-sm-6">
+    {{range $option := .Stations}}{{if not $option.IsRed}}
+      <a class="btn btn-solid-blue" href="/station_control?station={{$option.Station}}">{{$option.Name}}</a>
+    {{end}}{{end}}
+  </div>
+</div>
+{{else}}
+<div class="station-header {{if .IsRed}}station-red{{else}}station-blue{{end}}">
+  <div class="pull-right"><a href="/station_control">Change station</a></div>
+  <h2>{{.StationName}} &ndash; Station Control</h2>
+</div>
+<div id="openFieldOff" class="alert alert-warning" {{if .OpenFieldMode}}style="display: none;"{{end}}>
+  <b>Open Field mode is off.</b> Robots can only be enabled by the FTA during a match. Ask the FTA to turn on
+  Open Field mode to drive from this page.
+</div>
+<div id="errorMessage" class="alert alert-danger" style="display: none;">
+  <button type="button" class="close" onclick="$('#errorMessage').hide();">&times;</button>
+  <span id="errorText"></span>
+</div>
+<div class="row">
+  <div class="col-md-5">
+    <div class="well">
+      <legend>Team</legend>
+      <div>Team in this station:</div>
+      <div id="currentTeam">{{if .TeamId}}{{.TeamId}}{{else}}&ndash;{{end}}</div>
+      <p id="wifiLinkWrapper" {{if not .TeamId}}style="display: none;"{{end}}>
+        <a id="wifiLink" href="/team_wifi?team={{.TeamId}}" target="_blank">Get/set this team's radio Wi-Fi password</a>
+      </p>
+      <form class="form-inline" onsubmit="claimStation(); return false;">
+        <div class="form-group">
+          <input type="number" id="teamNumber" class="form-control input-lg" placeholder="Team #" min="1"
+              style="width: 140px;">
+        </div>
+        <button type="submit" class="btn btn-lg btn-info">Claim Station</button>
+      </form>
+      <p style="margin-top: 10px;">
+        <button type="button" id="releaseButton" class="btn btn-default" onclick="releaseStation();">
+          Release Station
+        </button>
+      </p>
+    </div>
+    <div class="well">
+      <legend>Status</legend>
+      <table class="table table-condensed station-status-table">
+        <tr><td>Driver Station</td><td><div class="ds-status"></div></td></tr>
+        <tr><td>Radio</td><td><div class="radio-status"></div></td></tr>
+        <tr><td>Robot</td><td><div class="robot-status"></div></td></tr>
+        <tr><td>Battery</td><td id="battery">&ndash;</td></tr>
+        <tr><td>E-Stop</td><td id="estop">&ndash;</td></tr>
+        <tr><td>FMS command</td><td id="fmsCommand">&ndash;</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div id="robotState" data-state="">&ndash;</div>
+    <button type="button" id="disableButton" class="btn btn-solid-red control-btn" onclick="disableRobot();">
+      DISABLE
+    </button>
+    <div class="btn-group" id="modeButtons" style="width: 100%; margin-bottom: 15px;">
+      <button type="button" class="btn btn-default" id="modeAuto" onclick="setAuto(true);">Autonomous</button>
+      <button type="button" class="btn btn-default" id="modeTeleop" onclick="setAuto(false);">Teleop</button>
+    </div>
+    <button type="button" id="enableButton" class="btn btn-success control-btn" onclick="enableRobot();">
+      ENABLE
+    </button>
+    <button type="button" id="runAutoButton" class="btn btn-warning control-btn" onclick="runAuto();">
+      Run Auto ({{.AutoDurationSec}}s)
+    </button>
+    <button type="button" id="estopButton" class="btn btn-danger control-btn" onclick="estopRobot();">
+      E-STOP
+    </button>
+    <p class="text-muted">
+      An E-stop stays latched until the FTA clears it from the Open Field page. Press <b>SPACE</b> at any time to disable the robot. "Run Auto" enables autonomous for
+      {{.AutoDurationSec}} seconds and then disables the robot.
+    </p>
+  </div>
+</div>
+{{end}}
+{{end}}
+{{define "script"}}
+<script>
+  var station = "{{.Station}}";
+</script>
+<script src="/static/js/station_control.js"></script>
+{{end}}

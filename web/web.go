@@ -150,6 +150,8 @@ func (web *Web) newHandler() http.Handler {
 	router.HandleFunc("/match_review", web.matchReviewHandler).Methods("GET")
 	router.HandleFunc("/match_review/{matchId}/edit", web.matchReviewEditGetHandler).Methods("GET")
 	router.HandleFunc("/match_review/{matchId}/edit", web.matchReviewEditPostHandler).Methods("POST")
+	router.HandleFunc("/open_field", web.openFieldHandler).Methods("GET")
+	router.HandleFunc("/open_field/websocket", web.openFieldWebsocketHandler).Methods("GET")
 	router.HandleFunc("/reports/csv/backups", web.backupTeamsCsvReportHandler).Methods("GET")
 	router.HandleFunc("/reports/csv/rankings", web.rankingsCsvReportHandler).Methods("GET")
 	router.HandleFunc("/reports/csv/schedule/{type}", web.scheduleCsvReportHandler).Methods("GET")
@@ -162,6 +164,8 @@ func (web *Web) newHandler() http.Handler {
 	router.HandleFunc("/reports/pdf/rankings", web.rankingsPdfReportHandler).Methods("GET")
 	router.HandleFunc("/reports/pdf/schedule/{type}", web.schedulePdfReportHandler).Methods("GET")
 	router.HandleFunc("/reports/pdf/teams", web.teamsPdfReportHandler).Methods("GET")
+	router.HandleFunc("/station_control", web.stationControlHandler).Methods("GET")
+	router.HandleFunc("/station_control/websocket", web.stationControlWebsocketHandler).Methods("GET")
 	router.HandleFunc("/setup/awards", web.awardsGetHandler).Methods("GET")
 	router.HandleFunc("/setup/awards", web.awardsPostHandler).Methods("POST")
 	router.HandleFunc("/setup/awards/publish", web.awardsPublishHandler).Methods("POST")
@@ -191,6 +195,8 @@ func (web *Web) newHandler() http.Handler {
 	router.HandleFunc("/setup/teams/generate_wpa_keys", web.teamsGenerateWpaKeysHandler).Methods("GET")
 	router.HandleFunc("/setup/teams/publish", web.teamsPublishHandler).Methods("POST")
 	router.HandleFunc("/setup/teams/refresh", web.teamsRefreshHandler).Methods("GET")
+	router.HandleFunc("/team_wifi", web.teamWifiGetHandler).Methods("GET")
+	router.HandleFunc("/team_wifi", web.teamWifiPostHandler).Methods("POST")
 	return router
 }
 

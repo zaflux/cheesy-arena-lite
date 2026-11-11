@@ -68,6 +68,7 @@ type LinksysAccessPoint struct {
 	configRequestChan      chan [6]*model.Team
 	teamWifiStatuses       [6]TeamWifiStatus
 	initialStatusesFetched bool
+	lastWpaKeys            *[6]string
 }
 
 type TeamWifiStatus struct {
@@ -156,11 +157,12 @@ func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) 
 		return
 	}
 
-	if ap.configIsCorrectForTeams(teams) {
+	if ap.configIsCurrentForTeams(teams) {
 		return
 	}
 
-	// Generate the configuration command.
+	// Generate the configuration command, capturing the keys being applied in case the team records change meanwhile.
+	wpaKeys := teamWpaKeys(teams)
 	config, err := generateAccessPointConfig(teams)
 	if err != nil {
 		fmt.Printf("Failed to configure team WiFi: %v", err)
@@ -180,6 +182,7 @@ func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) 
 		if err == nil {
 			err = ap.updateTeamWifiStatuses()
 			if err == nil && ap.configIsCorrectForTeams(teams) {
+				ap.lastWpaKeys = &wpaKeys
 				log.Printf("Successfully configured WiFi after %d attempts.", attemptCount)
 				return
 			}
@@ -192,6 +195,29 @@ func (ap *LinksysAccessPoint) handleTeamWifiConfiguration(teams [6]*model.Team) 
 		log.Printf("WiFi configuration still incorrect after %d attempts; trying again.", attemptCount)
 		attemptCount++
 	}
+}
+
+// Returns true if the access point's SSIDs match the given teams and their WPA keys haven't changed since they were
+// last applied. The keys can't be read back from the AP, so they are assumed correct the first time the SSIDs match.
+func (ap *LinksysAccessPoint) configIsCurrentForTeams(teams [6]*model.Team) bool {
+	if !ap.configIsCorrectForTeams(teams) {
+		return false
+	}
+	wpaKeys := teamWpaKeys(teams)
+	if ap.lastWpaKeys == nil {
+		ap.lastWpaKeys = &wpaKeys
+	}
+	return *ap.lastWpaKeys == wpaKeys
+}
+
+func teamWpaKeys(teams [6]*model.Team) [6]string {
+	var wpaKeys [6]string
+	for i, team := range teams {
+		if team != nil {
+			wpaKeys[i] = team.WpaKey
+		}
+	}
+	return wpaKeys
 }
 
 // Returns true if the configured networks as read from the access point match the given teams.

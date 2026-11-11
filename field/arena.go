@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Team254/cheesy-arena-lite/bracket"
@@ -79,6 +80,8 @@ type Arena struct {
 	ShowLowerThird             bool
 	MuteMatchSounds            bool
 	matchAborted               bool
+	OpenFieldMode              bool
+	openFieldMutex             sync.Mutex
 	soundsPlayed               map[*game.MatchSound]struct{}
 }
 
@@ -89,6 +92,12 @@ type AllianceStation struct {
 	Estop    bool
 	Bypass   bool
 	Team     *model.Team
+
+	// Open Field mode state for this station.
+	OpenFieldEnabled          bool
+	OpenFieldAuto             bool
+	OpenFieldAutoRemainingSec float64
+	openFieldAutoEndTime      time.Time
 }
 
 // Creates the arena and sets it to its initial state.
@@ -217,6 +226,9 @@ func (arena *Arena) UpdatePlayoffBracket(startTime *time.Time) error {
 func (arena *Arena) LoadMatch(match *model.Match) error {
 	if arena.MatchState != PreMatch {
 		return fmt.Errorf("Cannot load match while there is a match still in progress or with results pending.")
+	}
+	if arena.OpenFieldMode && match.Type != "test" {
+		return fmt.Errorf("Cannot load a %s match while Open Field mode is active.", match.Type)
 	}
 
 	arena.CurrentMatch = match
@@ -396,6 +408,9 @@ func (arena *Arena) StartTimeout(durationSec int) error {
 	if arena.MatchState != PreMatch {
 		return fmt.Errorf("Cannot start timeout while there is a match still in progress or with results pending.")
 	}
+	if arena.OpenFieldMode {
+		return fmt.Errorf("Cannot start timeout while Open Field mode is active.")
+	}
 
 	game.MatchTiming.TimeoutDurationSec = durationSec
 	game.UpdateMatchSounds()
@@ -549,8 +564,16 @@ func (arena *Arena) Update() {
 	}
 
 	// Send a packet if at a period transition point or if it's been long enough since the last one.
-	if sendDsPacket || time.Since(arena.lastDsPacketTime).Seconds()*1000 >= dsPacketPeriodMs {
+	arena.openFieldMutex.Lock()
+	if arena.OpenFieldMode && arena.updateOpenField() {
+		sendDsPacket = true
+	}
+	sendDsPacket = sendDsPacket || time.Since(arena.lastDsPacketTime).Seconds()*1000 >= dsPacketPeriodMs
+	if sendDsPacket {
 		arena.sendDsPacket(auto, enabled)
+	}
+	arena.openFieldMutex.Unlock()
+	if sendDsPacket {
 		arena.ArenaStatusNotifier.Notify()
 	}
 
@@ -604,6 +627,9 @@ func (arena *Arena) assignTeam(teamId int, station string) error {
 	dsConn := arena.AllianceStations[station].DsConn
 	if dsConn != nil && dsConn.TeamId == teamId {
 		return nil
+	}
+	if team := arena.AllianceStations[station].Team; team == nil || team.Id != teamId {
+		arena.resetOpenFieldStation(station)
 	}
 	if dsConn != nil {
 		dsConn.close()
@@ -729,6 +755,9 @@ func arenaTeamSummary(teams [6]*model.Team) string {
 
 // Returns nil if the match can be started, and an error otherwise.
 func (arena *Arena) checkCanStartMatch() error {
+	if arena.OpenFieldMode {
+		return fmt.Errorf("Cannot start match while Open Field mode is active.")
+	}
 	if arena.MatchState != PreMatch {
 		return fmt.Errorf("Cannot start match while there is a match still in progress or with results pending.")
 	}
@@ -771,12 +800,21 @@ func (arena *Arena) checkAllianceStationsReady(stations ...string) error {
 	return nil
 }
 
+// Sends a control packet to every connected driver station. In Open Field mode the given auto/enabled values are
+// ignored in favor of each station's own Open Field state. Callers must hold the Open Field mutex.
 func (arena *Arena) sendDsPacket(auto bool, enabled bool) {
+	fieldEstop := arena.Plc.GetFieldEstop()
 	for _, allianceStation := range arena.AllianceStations {
 		dsConn := allianceStation.DsConn
 		if dsConn != nil {
-			dsConn.Auto = auto
-			dsConn.Enabled = enabled && !allianceStation.Estop && !allianceStation.Astop && !allianceStation.Bypass
+			stationAuto, stationEnabled := auto, enabled
+			if arena.OpenFieldMode {
+				stationAuto = allianceStation.OpenFieldAuto
+				stationEnabled = allianceStation.OpenFieldEnabled && !fieldEstop
+			}
+			dsConn.Auto = stationAuto
+			dsConn.Enabled = stationEnabled && !allianceStation.Estop && !allianceStation.Astop &&
+				!allianceStation.Bypass
 			dsConn.Estop = allianceStation.Estop
 			err := dsConn.update(arena)
 			if err != nil {
@@ -881,8 +919,9 @@ func (arena *Arena) handleEstop(station string, state bool) {
 		if arena.MatchState != AutoPeriod {
 			allianceStation.Astop = false
 		}
-		if arena.MatchTimeSec() == 0 {
-			// Don't reset the e-stop while a match is in progress.
+		if arena.MatchTimeSec() == 0 && !arena.OpenFieldMode {
+			// Don't reset the e-stop while a match is in progress. In Open Field mode the e-stop stays latched until
+			// explicitly cleared via OpenFieldClearEstop.
 			allianceStation.Estop = false
 		}
 	}
